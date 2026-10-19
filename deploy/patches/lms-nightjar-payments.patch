@@ -55,6 +55,7 @@ diff --git a/frontend/src/pages/MobileYou.vue b/frontend/src/pages/MobileYou.vue
  		</template>
  
 diff --git a/frontend/src/pages/NightjarPayments.vue b/frontend/src/pages/NightjarPayments.vue
+new file mode 100644
 --- /dev/null
 +++ b/frontend/src/pages/NightjarPayments.vue
 @@ -0,0 +1,71 @@

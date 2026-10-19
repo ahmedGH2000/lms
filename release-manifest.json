@@ -83,7 +83,7 @@
     "deploy/patches/frappe-user-defaults.patch": "0107fcaa3110ccc6fc331a5fadb07d520720370d831fbe073dc3e6b9008a0c15",
     "deploy/patches/lms-member-feedback.patch": "aa3efca2abfb981aa1f83b4552a4983e7a1327936e09346f5295753c374101e2",
     "deploy/patches/lms-nightjar-activity.patch": "8b863be7d2785fd4f7de5e106218d9c04a532472cbbf52b9d1f5a1aa609c64a2",
-    "deploy/patches/lms-nightjar-payments.patch": "4a2d1a32c25a45f9e5f8b07cd1f6fca8546736640541424e72275ab48fe46c0c",
+    "deploy/patches/lms-nightjar-payments.patch": "9448559cf897b1fe7b123d631d4026875b71002f97157e837a08377d22e85a74",
     "deploy/production/.env.example": "4b8bf9488094e29604605e8662cc9af9775d596f3f03c16b9779f614c0c8ba98",
     "deploy/production/Containerfile": "3fac4e07c113577c7d092b86d5dc1ef8bbfe01938ff4648664433c8e58fc5898",
     "deploy/production/README.md": "99627e3a5a395968fcb87a2898a7a126ebae6f6754a804b4b352a2b6fa3ae6a8",
