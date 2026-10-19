@@ -52,9 +52,9 @@ RUN bench build --app frappe && \
     yarn --cwd apps/lms/frontend build && \
     npm --prefix apps/nightjar_learning/frontend ci && \
     npm --prefix apps/nightjar_learning/frontend run build && \
-    mkdir -p sites/assets/nightjar_learning && 
-    cp -a apps/nightjar_learning/nightjar_learning/public/. 
-      sites/assets/nightjar_learning/ && 
+    mkdir -p sites/assets/nightjar_learning && \
+    cp -a apps/nightjar_learning/nightjar_learning/public/. \
+      sites/assets/nightjar_learning/ && \
     printf '{}\n' > sites/common_site_config.json && \
     find apps -mindepth 1 -path '*/.git' -prune -exec rm -rf '{}' +
 

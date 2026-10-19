@@ -85,7 +85,7 @@
     "deploy/patches/lms-nightjar-activity.patch": "8b863be7d2785fd4f7de5e106218d9c04a532472cbbf52b9d1f5a1aa609c64a2",
     "deploy/patches/lms-nightjar-payments.patch": "9448559cf897b1fe7b123d631d4026875b71002f97157e837a08377d22e85a74",
     "deploy/production/.env.example": "4b8bf9488094e29604605e8662cc9af9775d596f3f03c16b9779f614c0c8ba98",
-    "deploy/production/Containerfile": "bd39b7a9d1aa78150481f08918ffdb96b5423635f03b4c7299e317d2e272bf30",
+    "deploy/production/Containerfile": "9866f59fe594e565c57b71cc5aeadc5f6bc95bb88d30a85a67c4b758167a3872",
     "deploy/production/README.md": "99627e3a5a395968fcb87a2898a7a126ebae6f6754a804b4b352a2b6fa3ae6a8",
     "deploy/production/compose.yaml": "6114a850b8d7434698724bdbe2e349ffa08ba11f7f033a0408d5cf684f785acd",
     "deploy/production/entrypoint.sh": "9d6ab4f138edfe128310097fbb558d44b94105081dec663e4e2171d371c0028e",
