@@ -25,6 +25,12 @@ class Enrollment(LMSEnrollment):
 
 
 def validate_enrollment(doc, method=None):
+    from nightjar_learning.payments import can_review
+    reviewed = (
+        getattr(frappe.flags, "nightjar_review_enrollment", None) == (doc.course, doc.member)
+        and can_review(doc.course)
+        and approved(doc.course, doc.member)
+    )
     old = doc.get_doc_before_save()
     if old:
         if any(
@@ -40,7 +46,7 @@ def validate_enrollment(doc, method=None):
             deny("Enrollment identity is immutable.")
     elif is_admin():
         doc.nj_approved_by = frappe.session.user
-    elif doc.member != frappe.session.user or doc.nj_approved_by:
+    elif not reviewed and (doc.member != frappe.session.user or doc.nj_approved_by):
         deny("You may only enroll yourself.")
     if (
         doc.current_lesson
@@ -49,7 +55,7 @@ def validate_enrollment(doc, method=None):
     ):
         deny("Resume lesson belongs to another course.")
     if not is_admin():
-        if doc.member != frappe.session.user:
+        if doc.member != frappe.session.user and not reviewed:
             deny()
         if frappe.db.get_value(
             "LMS Course", doc.course, "paid_course"

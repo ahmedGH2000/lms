@@ -101,7 +101,8 @@ def login(email, password, otp=None, tmp_id=None):
     if otp:
         frappe.local.form_dict.update(otp=otp, tmp_id=tmp_id)
     frappe.local.login_manager.login()
-    return {'signed_in': frappe.session.user != 'Guest', 'verification': frappe.local.response.get('verification'), 'tmp_id': frappe.local.response.get('tmp_id'), 'redirect_to': frappe.local.response.get('redirect_to')}
+    from nightjar_learning.navigation import landing_page
+    return {'landing_page': landing_page(), 'signed_in': frappe.session.user != 'Guest', 'verification': frappe.local.response.get('verification'), 'tmp_id': frappe.local.response.get('tmp_id'), 'redirect_to': frappe.local.response.get('redirect_to')}
 
 # Guest login must remain possible without replacing Frappe's authentication.
 login = frappe.whitelist(allow_guest=True, methods=['POST'])(login)

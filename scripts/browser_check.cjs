@@ -316,7 +316,7 @@ if (!process.env.NJ_TEST_ADMIN_PASSWORD || !process.env.NJ_BROWSER_FIXTURE)
     .getByRole("button", { name: "Request enrollment", exact: true })
     .click();
   await studentPage
-    .getByPlaceholder("Your payment reference")
+    .getByLabel("Payment details (required)")
     .fill("QA-browser-transfer-" + Date.now());
   await studentPage
     .getByRole("button", { name: "Send for verification" })
@@ -329,10 +329,8 @@ if (!process.env.NJ_TEST_ADMIN_PASSWORD || !process.env.NJ_BROWSER_FIXTURE)
   );
   pass("Payment request submits but does not grant paid access");
   await studentPage.goto(base + "/lms/settings/users/new");
-  await studentPage
-    .getByText("You are not permitted to manage members.", { exact: true })
-    .waitFor();
-  pass("Student cannot use instructor management form");
+  await studentPage.waitForURL('**/learn');
+  pass("Student LMS entry redirects to Learn");
   await studentContext.close();
   assert.deepEqual(issues, []);
   pass("No uncaught browser JavaScript errors in tested flows");

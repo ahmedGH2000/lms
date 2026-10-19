@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+commit="${1:-}"
+image="${2:-}"
+base=/opt/nightjar-learning
+secret_env="$base/app/deploy/production/.env"
+state_env="$base/deploy-state.env"
+releases="$base/releases"
+backups="$base/deployment-backups"
+repository=https://github.com/ahmedGH2000/lms.git
+expected_image="ghcr.io/ahmedgh2000/lms:$commit"
+
+[[ "$commit" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid deployment commit.' >&2; exit 2; }
+[[ "$image" == "$expected_image" ]] || { echo 'Unexpected container image.' >&2; exit 2; }
+[[ -f "$secret_env" ]] || { echo 'Nightjar production .env is missing.' >&2; exit 2; }
+command -v docker git flock curl python3 >/dev/null
+
+exec 9>/run/lock/nightjar-deploy.lock
+flock -n 9 || { echo 'Another Nightjar deployment is already running.' >&2; exit 3; }
+
+install -d -m 0700 "$releases" "$backups"
+release="$releases/$commit"
+if [[ ! -d "$release/.git" ]]; then
+  incoming="$(mktemp -d "$releases/.incoming-$commit-XXXXXXXX")"
+  trap 'if [[ -n "${incoming:-}" && -d "$incoming" ]]; then mv "$incoming" "$backups/incomplete-$commit-$(date -u +%Y%m%dT%H%M%SZ)"; fi' EXIT
+  git clone --filter=blob:none --no-checkout "$repository" "$incoming/repository"
+  git -C "$incoming/repository" checkout --detach "$commit"
+  [[ "$(git -C "$incoming/repository" rev-parse HEAD)" == "$commit" ]]
+  mv "$incoming/repository" "$release"
+  rmdir "$incoming"
+  incoming=
+fi
+
+[[ "$(git -C "$release" rev-parse HEAD)" == "$commit" ]] || {
+  echo 'Release directory does not match the requested commit.' >&2
+  exit 4
+}
+python3 "$release/deploy/verify_release.py" "$release"
+
+new_compose="$release/deploy/production/compose.yaml"
+[[ -f "$new_compose" ]] || { echo 'Production Compose file is missing.' >&2; exit 4; }
+
+if [[ -L "$base/current" && -f "$base/current/deploy/production/compose.yaml" ]]; then
+  old_compose="$base/current/deploy/production/compose.yaml"
+else
+  old_compose="$base/app/deploy/production/compose.yaml"
+fi
+
+old_image="$(docker inspect nightjar-learning-backend-1 --format '{{.Config.Image}}')"
+[[ -n "$old_image" ]] || { echo 'The running Nightjar image could not be identified.' >&2; exit 4; }
+
+compose_old=(docker compose -p nightjar-learning --env-file "$secret_env")
+if [[ -f "$state_env" ]]; then compose_old+=(--env-file "$state_env"); fi
+compose_old+=(-f "$old_compose")
+
+backend="$("${compose_old[@]}" ps -q backend)"
+[[ -n "$backend" ]] || { echo 'Nightjar backend is not running.' >&2; exit 4; }
+site="$(docker exec "$backend" printenv SITE_NAME)"
+[[ "$site" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'Invalid site name in running container.' >&2; exit 4; }
+
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup_dir="$backups/$timestamp-before-$commit"
+install -d -m 0700 "$backup_dir/site-backups"
+echo 'Creating database and uploaded-file backup before deployment.'
+"${compose_old[@]}" exec -T -e BENCH_PATH=/home/frappe/frappe-bench backend \
+  /home/frappe/frappe-bench/env/bin/python - < "$release/deploy/backup_local.py"
+docker cp "$backend:/home/frappe/frappe-bench/sites/$site/private/backups/." \
+  "$backup_dir/site-backups/"
+printf '%s\n' "$old_image" > "$backup_dir/previous-image.txt"
+printf '%s\n' "$commit" > "$backup_dir/requested-commit.txt"
+
+echo 'Pulling the verified commit image.'
+docker_config="$(mktemp -d /run/nightjar-docker-XXXXXXXX)"
+cleanup_registry() {
+  if [[ -n "${docker_config:-}" && "$docker_config" == /run/nightjar-docker-* ]]; then
+    docker --config "$docker_config" logout ghcr.io >/dev/null 2>&1 || true
+    rm -rf -- "$docker_config"
+  fi
+}
+docker --config "$docker_config" login ghcr.io -u ahmedGH2000 --password-stdin >/dev/null
+logged_in=1
+trap 'cleanup_registry' EXIT
+docker --config "$docker_config" pull "$image"
+revision="$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+[[ "$revision" == "$commit" ]] || { echo 'Image revision label does not match the commit.' >&2; exit 5; }
+
+deploy_started=0
+rollback() {
+  status=$?
+  trap - EXIT
+  if [[ $status -ne 0 && $deploy_started -eq 1 ]]; then
+    echo 'Deployment failed; restoring the previous Nightjar containers.' >&2
+    NIGHTJAR_IMAGE="$old_image" "${compose_old[@]}" up -d --no-build || true
+  fi
+  if [[ "${logged_in:-0}" == 1 ]]; then cleanup_registry; fi
+  exit "$status"
+}
+trap rollback EXIT
+
+compose_new=(docker compose -p nightjar-learning --env-file "$secret_env" -f "$new_compose")
+deploy_started=1
+NIGHTJAR_IMAGE="$image" "${compose_new[@]}" up -d --no-build
+
+healthy=0
+for _ in $(seq 1 60); do
+  if curl -fsS -H "Host: $site" http://127.0.0.1:8088/api/method/ping >/dev/null 2>&1; then
+    healthy=1
+    break
+  fi
+  sleep 2
+done
+[[ $healthy -eq 1 ]] || { echo 'Nightjar did not pass its local health check.' >&2; exit 6; }
+
+new_backend="$("${compose_new[@]}" ps -q backend)"
+[[ -n "$new_backend" ]]
+[[ "$(docker inspect "$new_backend" --format '{{.Config.Image}}')" == "$image" ]]
+
+temporary_state="$(mktemp "$base/.deploy-state-XXXXXXXX")"
+printf 'NIGHTJAR_IMAGE=%s\n' "$image" > "$temporary_state"
+chmod 0600 "$temporary_state"
+mv "$temporary_state" "$state_env"
+temporary_link="$base/.current-$commit-$$"
+ln -s "$release" "$temporary_link"
+mv -Tf "$temporary_link" "$base/current"
+
+deploy_started=0
+echo "Nightjar deployment complete: $commit"
+echo "Backup: $backup_dir"

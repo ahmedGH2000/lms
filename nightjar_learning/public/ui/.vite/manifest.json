@@ -1,6 +1,6 @@
 {
   "index.html": {
-    "file": "app-DaUPi66U.js",
+    "file": "app-DNlslH6m.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -64,7 +64,7 @@
     "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff2"
   },
   "src/Player.vue": {
-    "file": "assets/Player-D9OpXDD-.js",
+    "file": "assets/Player-Csm26izO.js",
     "name": "Player",
     "src": "src/Player.vue",
     "isDynamicEntry": true,

@@ -4,6 +4,7 @@ import subprocess
 import sys
 
 TARGETS = (
+    ("lms", "87168fc7b2f24559e474ea4702cf1aa63b0db4e8", "lms-nightjar-payments.patch"),
     ("lms", "87168fc7b2f24559e474ea4702cf1aa63b0db4e8", "lms-nightjar-activity.patch"),
     ("frappe", "b0b5b99a1d9d2cb3d54b32293d3854bf2c15f4a4", "frappe-user-defaults.patch"),
     ("lms", "87168fc7b2f24559e474ea4702cf1aa63b0db4e8", "lms-member-feedback.patch"),

@@ -40,7 +40,7 @@ def verify(root, imports=False):
 def build(root):
     root = Path(root).resolve()
     files = {}
-    for folder in ('nightjar_learning', 'frontend', 'deploy', 'scripts'):
+    for folder in ('nightjar_learning', 'frontend', 'deploy', 'scripts', '.github'):
         for path in sorted((root / folder).rglob('*')):
             relative = path.relative_to(root)
             if str(relative) in {'deploy/compose.yaml', 'deploy/.env.example'}:
@@ -55,7 +55,11 @@ def build(root):
     for path in (root / 'frontend/src').glob('*'):
         if path.suffix in {'.vue', '.js'}:
             methods.update(re.findall(r'rpc\(\s*["\']([a-z_]+\.[a-z_]+)["\']', path.read_text()))
-    manifest = {'release': '2026.10.15.2', 'files': files, 'methods': sorted(methods)}
+    # Native LMS methods are part of the same deployable API contract.
+    patch = root / 'deploy/patches/lms-nightjar-payments.patch'
+    if patch.exists():
+        methods.update(re.findall(r"nightjar_learning\.(payments\.[a-z_]+)", patch.read_text()))
+    manifest = {'release': '2026.10.18.1', 'files': files, 'methods': sorted(methods)}
     (root / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     return manifest
 

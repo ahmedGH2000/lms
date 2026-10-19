@@ -1,7 +1,7 @@
 name: nightjar-learning
 
 x-image: &image
-  image: ${NIGHTJAR_IMAGE:-nightjar-learning:2026.10.15.2}
+  image: ${NIGHTJAR_IMAGE:-nightjar-learning:2026.10.18.1}
   pull_policy: never
   restart: unless-stopped
 
@@ -168,7 +168,6 @@ services:
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
-      - ../../nightjar_learning/public:/home/frappe/frappe-bench/assets/nightjar_learning:ro
     ports:
       - 127.0.0.1:${HTTP_PORT:-8088}:8080
     depends_on:

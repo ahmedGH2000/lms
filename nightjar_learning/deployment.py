@@ -14,6 +14,9 @@ def check():
     for field in ('nj_response', 'nj_responder'):
         if not frappe.get_meta('LMS Course Review').has_field(field):
             frappe.throw('Missing review fields. Run bench migrate for this site.')
+    for field in ('receipt_key', 'receipt_name', 'receipt_type', 'receipt_size'):
+        if not frappe.get_meta('NJ Payment Request').has_field(field):
+            frappe.throw('Missing receipt fields. Run bench migrate for this site.')
     frappe.db.sql('select 1')
     # PING alone succeeds during Redis MISCONF. Verify an actual expiring write.
     key = 'nightjar-health-' + secrets.token_hex(12)

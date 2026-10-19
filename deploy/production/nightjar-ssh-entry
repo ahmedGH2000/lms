@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if [[ "${SSH_ORIGINAL_COMMAND:-}" == nightjar-probe ]]; then
+  echo 'Nightjar deployment key accepted.'
+  exit 0
+fi
+
+read -r -a requested <<< "${SSH_ORIGINAL_COMMAND:-}"
+if [[ ${#requested[@]} -ne 4 \
+  || "${requested[0]}" != sudo \
+  || "${requested[1]}" != /usr/local/sbin/nightjar-deploy \
+  || ! "${requested[2]}" =~ ^[0-9a-f]{40}$ \
+  || "${requested[3]}" != "ghcr.io/ahmedgh2000/lms:${requested[2]}" ]]; then
+  echo 'This SSH key can only deploy a verified Nightjar commit.' >&2
+  exit 2
+fi
+
+exec sudo /usr/local/sbin/nightjar-deploy "${requested[2]}" "${requested[3]}"

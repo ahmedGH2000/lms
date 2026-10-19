@@ -1,10 +1,13 @@
 <script setup>
+import { ref, watch } from "vue";
 import { money } from "./api";
-defineProps({
+const props = defineProps({
   course: Object,
   index: { type: Number, default: 0 },
   enrolled: Boolean,
 });
+const imageFailed = ref(false);
+watch(() => props.course.image, () => { imageFailed.value = false; });
 const colors = ["blue", "violet", "teal", "amber", "rose", "sky"],
   symbols = ["{ }", "</>", "⌘", "[ ]", "λ", "→"];
 </script>
@@ -12,7 +15,8 @@ const colors = ["blue", "violet", "teal", "amber", "rose", "sky"],
   <a class="course-card" :href="`#course=${encodeURIComponent(course.name)}`"
     ><div class="course-art" :class="colors[index % 6]">
       <img
-        v-if="course.image"
+        v-if="course.image && !imageFailed"
+        @error="imageFailed = true"
         :src="course.image"
         alt=""
         loading="lazy"

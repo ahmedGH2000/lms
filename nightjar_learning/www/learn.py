@@ -11,7 +11,7 @@ def get_context(context):
     assets = json.loads((Path(__file__).resolve().parents[1] / 'public/ui/.vite/manifest.json').read_text())
     context.entry_js = '/assets/nightjar_learning/ui/' + assets['index.html']['file']
     context.boot = {
-        "api_contract": 1,
+        "api_contract": 2,
         "user": frappe.session.user,
         "csrf_token": get_csrf_token(),
         "full_name": frappe.db.get_value("User", frappe.session.user, "full_name")

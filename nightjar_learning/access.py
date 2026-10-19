@@ -17,6 +17,13 @@ def is_admin(member=None):
     return member == "Administrator" or "System Manager" in frappe.get_roles(member)
 
 
+def is_staff(member=None):
+    member = member or frappe.session.user
+    return member != "Guest" and bool(frappe.db.get_value("User", member, "enabled")) and (
+        is_admin(member) or bool(set(frappe.get_roles(member)) & {"Moderator", "Course Creator"})
+    )
+
+
 def instructor(course, member=None):
     member = member or frappe.session.user
     return is_admin(member) or bool(

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from "vue";
+import Notice from "./Notice.vue";
 import { rpc, boot } from "./api";
 const props = defineProps({ mode: String });
 const email = ref(""),
@@ -17,6 +18,11 @@ const otp = ref(""),
   challenge = ref(null);
 const authenticated = boot.user !== "Guest";
 onMounted(async () => {
+  if (props.mode === "login" && sessionStorage.getItem("nightjar-registered")) {
+    email.value = sessionStorage.getItem("nightjar-registered");
+    sessionStorage.removeItem("nightjar-registered");
+    message.value = "Your account is ready. Sign in with your email and password.";
+  }
   if (sessionStorage.getItem("nightjar-password-updated")) {
     message.value = "Password changed. Other sessions have been signed out.";
     sessionStorage.removeItem("nightjar-password-updated");
@@ -54,8 +60,8 @@ async function submit(action = props.mode) {
       );
       password.value = "";
       confirm.value = "";
-      message.value =
-        "Your account is ready. Sign in with your email and password.";
+      sessionStorage.setItem("nightjar-registered", email.value);
+      location.hash = "view=login";
     } else if (action === "login") {
       const d = await rpc(
         "accounts.login",
@@ -68,8 +74,8 @@ async function submit(action = props.mode) {
         true,
       );
       if (d.signed_in) {
-        location.hash = "view=dashboard";
-        location.reload();
+        if (d.landing_page === "/lms") location.assign("/lms");
+        else { location.hash = "view=dashboard"; location.reload(); }
       } else if (d.verification) {
         challenge.value = d;
         message.value =
@@ -156,8 +162,8 @@ async function submit(action = props.mode) {
           }[mode]
         }}
       </h2>
-      <p v-if="error" class="notice error" role="alert">{{ error }}</p>
-      <p v-if="message" class="notice success" role="status">{{ message }}</p>
+      <Notice :message="error" kind="error" @dismiss="error = ''" />
+      <Notice :message="message" @dismiss="message = ''" />
       <template v-if="mode === 'profile' && !authenticated"
         ><p>Sign in to manage your account.</p>
         <a class="button" href="#view=login">Sign in</a></template

@@ -1,0 +1,145 @@
+diff --git a/frontend/src/routes.js b/frontend/src/routes.js
+--- a/frontend/src/routes.js
++++ b/frontend/src/routes.js
+@@ -5,6 +5,7 @@
+ // memory history, rather than a copy that could drift from what router.js
+ // actually registers.
+ export const routes = [
++	{ path: '/payment-requests', name: 'NightjarPayments', component: () => import('@/pages/NightjarPayments.vue') },
+ 	{
+ 		path: '/',
+ 		name: 'Home',
+diff --git a/frontend/src/router.js b/frontend/src/router.js
+--- a/frontend/src/router.js
++++ b/frontend/src/router.js
+@@ -42,6 +42,13 @@
+ 		isLoggedIn = false
+ 	}
+ 
++	const staff = userResource.data?.is_system_manager || userResource.data?.is_moderator || userResource.data?.is_instructor || userResource.data?.name === 'Administrator'
++	const activityFrame = window.self !== window.top && /\/(quizzes|assignments|programming-exercises)\//.test(to.path)
++	if (!staff && !activityFrame && !new URLSearchParams(window.location.search).has('nightjar_lesson')) {
++		window.location.replace(isLoggedIn ? '/learn' : '/learn#view=login')
++		return next(false)
++	}
++
+ 	if (!isLoggedIn) {
+ 		if (to.name == 'Home') router.push({ name: 'Courses' })
+ 
+diff --git a/frontend/src/components/Sidebar/AppSidebar.vue b/frontend/src/components/Sidebar/AppSidebar.vue
+--- a/frontend/src/components/Sidebar/AppSidebar.vue
++++ b/frontend/src/components/Sidebar/AppSidebar.vue
+@@ -8,6 +8,10 @@
+ 			:class="sidebarStore.isSidebarCollapsed ? 'items-center' : ''"
+ 		>
+ 			<UserDropdown :isCollapsed="sidebarStore.isSidebarCollapsed" />
++			<div v-if="userResource.data?.is_system_manager || isModerator || isInstructor || userResource.data?.name === 'Administrator'" class="mx-2 my-2.5">
++				<SidebarLink :link="{ label: 'Payment requests', icon: 'CreditCard', to: 'NightjarPayments', activeFor: ['NightjarPayments'] }" :isCollapsed="sidebarStore.isSidebarCollapsed" />
++				<SidebarLink :link="{ label: 'Student view', icon: 'GraduationCap', to: 'learn' }" :isCollapsed="sidebarStore.isSidebarCollapsed" />
++			</div>
+ 			<div class="flex flex-col" v-if="sidebarSettings.data">
+ 				<div v-for="link in sidebarLinks" class="mx-2 my-2.5">
+ 					<div
+diff --git a/frontend/src/pages/MobileYou.vue b/frontend/src/pages/MobileYou.vue
+--- a/frontend/src/pages/MobileYou.vue
++++ b/frontend/src/pages/MobileYou.vue
+@@ -47,6 +47,10 @@
+ 				</router-link>
+ 			</div>
+ 
++			<div v-if="user?.is_system_manager || user?.is_moderator || user?.is_instructor || user?.name === 'Administrator'" class="flex flex-col gap-3 p-4">
++				<router-link :to="{ name: 'NightjarPayments' }" class="text-ink-gray-9 underline">Payment requests</router-link>
++				<a href="/learn" class="text-ink-gray-9 underline">Student view</a>
++			</div>
+ 			<SettingsRowList :groups="groups" @action="activate" />
+ 		</template>
+ 
+diff --git a/frontend/src/pages/NightjarPayments.vue b/frontend/src/pages/NightjarPayments.vue
+--- /dev/null
++++ b/frontend/src/pages/NightjarPayments.vue
+@@ -0,0 +1,71 @@
++<script setup>
++import { ref, onMounted, watch } from 'vue'
++import { call } from 'frappe-ui'
++const rows = ref([]), status = ref('Pending'), start = ref(0), hasMore = ref(false)
++const loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), notes = ref({})
++let sequence = 0
++async function load(preserveNotice = false) {
++  const current = ++sequence
++  loading.value = true; if (preserveNotice !== true) notice.value = ''
++  error.value = ''
++  try {
++    const data = await call('nightjar_learning.payments.review_requests', { start: start.value, status: status.value })
++    if (current !== sequence) return
++    rows.value = data.items
++    hasMore.value = data.has_more
++  } catch (e) {
++    if (current === sequence) { rows.value = []; hasMore.value = false; error.value = e.messages?.join(' ') || e.message || 'Could not load requests. Try again.' }
++  } finally { if (current === sequence) loading.value = false }
++}
++async function decide(row, decision) {
++  if (busy.value) return
++  error.value = ''; notice.value = ''
++  const note = notes.value[row.name]?.trim()
++  if (!note) { error.value = 'Add a review note before choosing an action.'; return }
++  if (decision === 'Revoked' && !window.confirm(`Remove ${row.member}’s access to ${row.course_title}?`)) return
++  busy.value = true
++  try {
++    await call('nightjar_learning.payments.decide', { request: row.name, decision, note })
++    notice.value = `${row.member}: request ${decision.toLowerCase()}.`
++    delete notes.value[row.name]
++    await load(true)
++  } catch (e) { error.value = e.messages?.join(' ') || e.message || 'The change could not be confirmed. Refresh before trying again.' }
++  finally { busy.value = false }
++}
++watch(status, () => { start.value = 0; load() })
++function page(offset) { start.value += offset; load() }
++onMounted(load)
++</script>
++<template>
++  <section class="nj-payments">
++    <header><div><p class="nj-eyebrow">Teaching workspace</p><h1>Payment requests</h1><p>Review payment details, then grant access to your courses.</p></div><a href="/learn">Student view ↗</a></header>
++    <div class="nj-toolbar"><label>Status <select v-model="status" :disabled="busy || loading"><option value="">All requests</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Revoked</option></select></label><button :disabled="loading || busy" @click="load">Refresh</button></div>
++    <Transition name="nj-feedback"><p v-if="error" class="nj-error" role="alert">{{ error }}</p></Transition>
++    <Transition name="nj-feedback"><p v-if="notice" class="nj-success" role="status">{{ notice }}</p></Transition>
++    <p v-if="loading" role="status">Loading requests…</p>
++    <p v-else-if="!rows.length && !error" class="nj-empty">No {{ status.toLowerCase() }} requests here. Instructors see only courses they teach.</p>
++    <div v-else-if="!loading" class="nj-list">
++      <article v-for="row in rows" :key="row.name" class="nj-request">
++        <div class="nj-request-heading"><div><h2>{{ row.course_title }}</h2><p>{{ row.member }}</p></div><span class="nj-status">{{ row.status }}</span></div>
++        <p class="nj-amount">{{ row.currency }} {{ Number(row.amount).toLocaleString() }} · {{ row.creation?.slice(0, 10) }}</p>
++        <dl><dt>Student’s payment details</dt><dd>{{ row.reference }}</dd></dl>
++        <a v-if="row.receipt_name" :href="'/api/method/nightjar_learning.payments.receipt?request=' + encodeURIComponent(row.name)" class="nj-receipt">Download receipt · {{ row.receipt_name }}</a>
++        <p v-else class="nj-muted">No receipt attached.</p>
++        <p v-if="row.review_note" class="nj-previous"><strong>Previous review:</strong> {{ row.review_note }}<span v-if="row.reviewed_by"> · {{ row.reviewed_by }}</span></p>
++        <template v-if="['Pending', 'Approved'].includes(row.status)">
++          <label :for="'review-' + row.name">Review note (required)</label>
++          <textarea :id="'review-' + row.name" v-model="notes[row.name]" :disabled="busy" maxlength="1000" placeholder="How you verified payment, or why you are rejecting/revoking access" />
++          <div class="nj-actions"><template v-if="row.status === 'Pending'"><button class="nj-primary" :disabled="busy" @click="decide(row, 'Approved')">Approve enrollment</button><button :disabled="busy" @click="decide(row, 'Rejected')">Reject</button></template><button v-else class="nj-danger" :disabled="busy" @click="decide(row, 'Revoked')">Revoke access</button></div>
++        </template>
++      </article>
++    </div>
++    <nav aria-label="Request pages" class="nj-pagination"><button :disabled="!start || loading || busy" @click="page(-50)">Previous</button><span>Page {{ start / 50 + 1 }}</span><button :disabled="!hasMore || loading || busy" @click="page(50)">Next</button></nav>
++  </section>
++</template>
++<style scoped>
++.nj-payments{padding:32px;max-width:1050px;margin:0 auto;width:100%;color:var(--ink-gray-9,#20242b)}
++header,.nj-request-heading,.nj-toolbar,.nj-actions,.nj-pagination{display:flex;justify-content:space-between;gap:16px;align-items:center}
++header{margin-bottom:28px;align-items:flex-start}h1{font-size:28px;font-weight:650;margin:6px 0 10px}h2{font-size:18px;font-weight:600}.nj-eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#716382}
++p{line-height:1.6}.nj-toolbar{margin-bottom:22px;justify-content:flex-start}.nj-toolbar label{display:flex;gap:10px;align-items:center}select,button,textarea{border:1px solid #ccd0d6;border-radius:8px;padding:10px 14px;background:var(--surface-base,#fff);color:inherit}button{font-size:14px;cursor:pointer;transition:background .2s,transform .2s}button:hover:not(:disabled){background:#f0edf6;transform:translateY(-1px)}button:disabled{opacity:.5;cursor:wait}.nj-list{display:grid;gap:18px}.nj-request{border:1px solid #e0e1e6;border-radius:14px;padding:24px;background:var(--surface-base,#fff)}.nj-status{font-size:12px;padding:6px 10px;background:#ece8f4;color:#514365;border-radius:20px}.nj-amount,.nj-muted{color:#70737b;font-size:13px;margin:12px 0}dt,label{font-size:13px;font-weight:600}.nj-request > label{display:block;margin-top:8px}dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 14px}a{color:#6d4d97;text-decoration:underline;text-underline-offset:3px}.nj-receipt{display:inline-block;margin-bottom:18px;overflow-wrap:anywhere}.nj-previous{padding:12px;background:#f4f2f8;color:#40364e;margin:12px 0;overflow-wrap:anywhere}textarea{display:block;width:100%;min-height:85px;margin:8px 0 14px}.nj-actions{justify-content:flex-start;flex-wrap:wrap}.nj-primary{background:#675080;color:#fff;border-color:#675080}.nj-primary:hover:not(:disabled){background:#523d6a}.nj-danger{color:#9c3636}.nj-error,.nj-success,.nj-empty{padding:16px;border-radius:10px;margin:14px 0}.nj-error{background:#fff0ed;color:#923b2f}.nj-success{background:#eaf6ef;color:#285c40}.nj-empty{background:#f5f4f7;color:#514761}.nj-pagination{justify-content:center;margin-top:24px}.nj-feedback-enter-active,.nj-feedback-leave-active{transition:opacity .2s,transform .2s}.nj-feedback-enter-from,.nj-feedback-leave-to{opacity:0;transform:translateY(-6px)}
++@media(max-width:600px){.nj-payments{padding:20px 14px}header{flex-direction:column}.nj-request{padding:18px}.nj-request-heading{align-items:flex-start}.nj-request-heading p{overflow-wrap:anywhere}}@media(prefers-reduced-motion:reduce){*{transition:none!important;transform:none!important}}
++</style>
+diff --git a/frontend/vite.config.js b/frontend/vite.config.js
+--- a/frontend/vite.config.js
++++ b/frontend/vite.config.js
+@@ -35,7 +35,9 @@
+ 					runtimeCaching: [
+ 						{
+ 							urlPattern: ({ request }) =>
+-								request.destination === 'document',
++								request.destination === 'document' &&
++								!new URL(request.url).pathname.startsWith('/api/') &&
++								!new URL(request.url).pathname.startsWith('/private/'),
+ 							handler: 'NetworkFirst',
+ 							options: {
+ 								cacheName: 'html-cache',

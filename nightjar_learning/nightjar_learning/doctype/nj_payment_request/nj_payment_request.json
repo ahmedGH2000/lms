@@ -10,6 +10,10 @@
     "amount",
     "currency",
     "reference",
+    "receipt_name",
+    "receipt_key",
+    "receipt_size",
+    "receipt_type",
     "status",
     "reviewed_by",
     "reviewed_at",
@@ -75,6 +79,38 @@
       "label": "Review Note",
       "fieldtype": "Small Text",
       "read_only": 1
+    },
+    {
+      "fieldname": "receipt_name",
+      "label": "Receipt filename",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "no_copy": 1,
+      "hidden": 0
+    },
+    {
+      "fieldname": "receipt_key",
+      "label": "Receipt storage key",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "no_copy": 1,
+      "hidden": 1
+    },
+    {
+      "fieldname": "receipt_size",
+      "label": "Receipt size",
+      "fieldtype": "Int",
+      "read_only": 1,
+      "no_copy": 1,
+      "hidden": 0
+    },
+    {
+      "fieldname": "receipt_type",
+      "label": "Receipt type",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "no_copy": 1,
+      "hidden": 1
     }
   ],
   "track_changes": 1,

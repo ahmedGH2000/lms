@@ -1,0 +1,97 @@
+name: Test, build and deploy Nightjar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: nightjar-production
+  cancel-in-progress: false
+
+jobs:
+  test-build-deploy:
+    name: Test, build and deploy
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Validate release and tests
+        run: |
+          python3 -m pip install --disable-pip-version-check pytest Pillow pypdf Werkzeug
+          python3 deploy/verify_release.py .
+          python3 -m pytest tests -q
+          bash -n deploy/production/nightjar-deploy \
+            deploy/production/nightjar-ssh-entry \
+            deploy/production/install-ci-deployer.sh
+
+      - name: Select the container image name
+        id: image
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish the exact commit
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: deploy/production/Containerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+          build-args: |
+            SOURCE_REVISION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure the deployment SSH connection
+        shell: bash
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/nightjar-ssh"
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/nightjar-ssh/key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$RUNNER_TEMP/nightjar-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/nightjar-ssh/key" "$RUNNER_TEMP/nightjar-ssh/known_hosts"
+          ssh-keygen -y -f "$RUNNER_TEMP/nightjar-ssh/key" >/dev/null
+          test -s "$RUNNER_TEMP/nightjar-ssh/known_hosts"
+
+      - name: Deploy only the Nightjar Compose project
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+        run: |
+          test -n "$VPS_HOST"
+          test -n "$VPS_USER"
+          printf '%s' "$GHCR_TOKEN" | ssh \
+            -i "$RUNNER_TEMP/nightjar-ssh/key" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/nightjar-ssh/known_hosts" \
+            "$VPS_USER@$VPS_HOST" \
+            sudo /usr/local/sbin/nightjar-deploy "$GITHUB_SHA" "$IMAGE"

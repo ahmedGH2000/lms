@@ -57,8 +57,12 @@ RUN bench build --app frappe && \
 
 FROM ${BASE_IMAGE} AS runtime
 
+ARG SOURCE_REVISION=unknown
+
 LABEL org.opencontainers.image.title="Nightjar Learning" \
-      org.opencontainers.image.version="2026.10.15.2" \
+      org.opencontainers.image.version="2026.10.18.1" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      org.opencontainers.image.source="https://github.com/ahmedGH2000/lms" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 USER root

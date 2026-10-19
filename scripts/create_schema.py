@@ -46,35 +46,8 @@ def make(n, fields, cls, body):
     )
 
 
-make(
-    "NJ Payment Request",
-    [
-        f("member", "Link", "User", reqd=1),
-        f("course", "Link", "LMS Course", reqd=1),
-        f("amount", "Currency", reqd=1),
-        f("currency", "Link", "Currency", reqd=1),
-        f("reference", reqd=1),
-        f(
-            "status",
-            "Select",
-            "Pending\nApproved\nRejected\nRevoked",
-            default="Pending",
-            read_only=1,
-        ),
-        f("reviewed_by", "Link", "User", read_only=1),
-        f("reviewed_at", "Datetime", read_only=1),
-        f("review_note", "Small Text", read_only=1),
-    ],
-    "NJPaymentRequest",
-    """    def validate(self):
-        from nightjar_learning.access import is_admin, deny
-        old=self.get_doc_before_save()
-        if self.is_new() and (self.status != 'Pending' or self.reviewed_by or self.reviewed_at): deny('New requests must be pending.')
-        if old:
-            if any(self.get(k) != old.get(k) for k in ('member','course','amount','currency','reference')): deny('Payment identity and quote are immutable.')
-            if not is_admin(): deny('Only administrators may update requests.')
-""",
-)
+# Payment Request schema/controller is maintained directly in the app;
+# do not regenerate it here and erase receipt fields or permission guards.
 make(
     "NJ Video Asset",
     [

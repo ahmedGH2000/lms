@@ -23,7 +23,7 @@ def release(tmp_path):
     (root/'frontend/src/api.js').write_text('rpc("accounts.login"); rpc("accounts.register"); rpc("community.reviews");')
     for name in ('pyproject.toml','package.json','README.md','LICENSE','THIRD-PARTY-NOTICES.md'):
         (root/name).write_text('fixture')
-    for name in ('verify_release.py','update-local.sh'):
+    for name in ('verify_release.py','update-local.sh','backup_local.py'):
         shutil.copyfile(ROOT/'deploy'/name,root/'deploy'/name)
     (root/'deploy/compose.yaml').write_text('operator config')
     (root/'deploy/.env.example').write_text('template')

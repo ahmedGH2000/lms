@@ -20,7 +20,7 @@ if mount.get("type")!="bind" or pathlib.Path(mount.get("source", "")).resolve()!
     raise SystemExit("Compose does not mount this project at /workspace. Update the actual mounted project instead.")
 '
 echo 'Backing up the existing database and uploaded files. App must be running.'
-"${compose[@]}" exec -T app bash -lc 'cd /home/frappe/work/bench && bench --site nightjar.localhost backup --with-files'
+"${compose[@]}" exec -T app /home/frappe/work/bench/env/bin/python - < "$release_dir/deploy/backup_local.py"
 backup_dir="$(mktemp -d "${target_dir}-before-update-XXXXXXXX")"
 # Export the site backups before stopping, so the backup also lives outside the volume.
 "${compose[@]}" cp app:/home/frappe/work/bench/sites/nightjar.localhost/private/backups "$backup_dir/site-backups"

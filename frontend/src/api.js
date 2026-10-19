@@ -15,11 +15,11 @@ export async function rpc(method, args = {}, write = false) {
         credentials: "same-origin",
         headers: write
           ? {
-              "Content-Type": "application/json",
+              ...(args instanceof FormData ? {} : {"Content-Type": "application/json"}),
               "X-Frappe-CSRF-Token": boot.csrf_token,
             }
           : {},
-        ...(write ? { body: JSON.stringify(args) } : {}),
+        ...(write ? { body: args instanceof FormData ? args : JSON.stringify(args) } : {}),
       },
     );
     const d = await r.json().catch(() => null);

@@ -2039,3 +2039,36 @@ body {
     transform: none;
   }
 }
+
+/* Teaching-focused motion and clear feedback. */
+.modal-backdrop { z-index: 100; }
+.intro-side { perspective: 650px; }
+.intro-side svg { transform-origin: center; animation: nightjar-pyramid 22s linear infinite; }
+@keyframes nightjar-pyramid { from { transform: rotateY(0deg) rotateZ(-4deg); } to { transform: rotateY(360deg) rotateZ(-4deg); } }
+.featured-art { display: flex; padding: 0; overflow: hidden; text-decoration: none; min-height: 280px; }
+.featured-course-image { width: 100%; height: 100%; min-height: 280px; object-fit: cover; transition: transform .5s ease; }
+.featured-art:hover .featured-course-image { transform: scale(1.035); }
+.featured-fallback { display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 40px; color: #fff; background: linear-gradient(135deg,#403777,#24354e); width: 100%; }
+.featured-fallback > span { font-size: 70px; line-height: 1; color: #c4b5fd; }
+.featured-fallback strong { font-size: 26px; }
+.course-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.course-card:hover, .course-card:focus-visible { transform: translateY(-5px); box-shadow: 0 15px 32px #28213c16; }
+.course-art img { transition: transform .5s ease; }
+.course-card:hover .course-art img { transform: scale(1.035); }
+.button { transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease; }
+.button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px #37286120; }
+.button:active:not(:disabled) { transform: translateY(0); }
+.notice-polished { display: flex; align-items: flex-start; gap: 12px; border-radius: 12px; box-shadow: 0 4px 16px #2720330a; }
+.notice-icon { flex: 0 0 23px; height: 23px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-weight: 700; }
+.notice-polished > span:nth-child(2) { flex: 1; }
+.notice-dismiss { border: 0; background: transparent; color: inherit; font-size: 23px; padding: 0 5px; cursor: pointer; }
+.notice-enter-active, .notice-leave-active { transition: opacity .22s ease, transform .22s ease; }
+.notice-enter-from, .notice-leave-to { opacity: 0; transform: translateY(-8px); }
+.modal { animation: nightjar-dialog .24s ease-out; }
+.modal form label { display: block; margin-top: 16px; }
+.modal input[type=file] { padding: 12px; font-size: 14px; }
+@keyframes nightjar-dialog { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .course-card:hover, .button:hover, .featured-art:hover img, .course-card:hover img { transform: none; }
+}

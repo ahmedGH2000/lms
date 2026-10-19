@@ -32,7 +32,7 @@ def catalog(search="", category="", level="", start=0):
             "featured",
             "card_gradient",
         ],
-        order_by="featured desc, published_on desc, name asc",
+        order_by="published_on desc, creation desc, name asc",
         start=start,
         limit_page_length=24,
     )

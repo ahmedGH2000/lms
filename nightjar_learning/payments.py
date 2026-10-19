@@ -1,7 +1,18 @@
 import frappe
 from frappe.rate_limiter import rate_limit
 from frappe.utils import now_datetime
-from nightjar_learning.access import user, is_admin, deny, approved
+from nightjar_learning.access import user, is_admin, is_staff, instructor, deny, approved
+
+
+def can_review(course, member=None):
+    member = member or frappe.session.user
+    return is_staff(member) and instructor(course, member)
+
+
+def require_reviewer(course):
+    user()
+    if not can_review(course):
+        deny("You can only review requests for courses you teach.")
 
 
 def enroll_member(course, member):
@@ -55,8 +66,11 @@ def request_payment(course, reference):
     if existing:
         return {
             "name": existing,
+            "existing": True,
             "status": frappe.db.get_value("NJ Payment Request", existing, "status"),
         }
+    from nightjar_learning.receipts import read_upload, save_receipt
+    upload = read_upload()
     doc = frappe.get_doc(
         {
             "doctype": "NJ Payment Request",
@@ -67,17 +81,30 @@ def request_payment(course, reference):
             "currency": row.currency,
             "status": "Pending",
         }
-    ).insert(ignore_permissions=True)
+    )
+    if upload:
+        save_receipt(doc, upload)
+    previous_create = getattr(frappe.flags, "nightjar_payment_create", None)
+    frappe.flags.nightjar_payment_create = (course, member)
+    try:
+        doc.insert(ignore_permissions=True)
+    except Exception:
+        if upload:
+            from nightjar_learning.receipts import remove_receipt
+            remove_receipt(doc.receipt_key)
+        raise
+    finally:
+        frappe.flags.nightjar_payment_create = previous_create
     return {"name": doc.name, "status": doc.status}
 
 
 @frappe.whitelist(methods=["POST"])
 def decide(request, decision, note=""):
-    if not is_admin():
-        deny("Only system administrators can approve payments.")
+    user()
     course = frappe.db.get_value("NJ Payment Request", request, "course")
     if not course:
         deny()
+    require_reviewer(course)
     frappe.db.get_value("LMS Course", course, "name", for_update=True)
     frappe.db.get_value("NJ Payment Request", request, "name", for_update=True)
     doc = frappe.get_doc("NJ Payment Request", request)
@@ -90,21 +117,32 @@ def decide(request, decision, note=""):
         frappe.throw(
             "Invalid transition. A new request is needed after rejection or revocation."
         )
-    if not str(note).strip():
+    note = str(note or "").strip()
+    if not note:
         frappe.throw("Record how you verified the payment or why it was rejected.")
     doc.status = decision
-    doc.review_note = str(note)[:1000]
+    doc.review_note = note[:1000]
     doc.reviewed_by = frappe.session.user
     doc.reviewed_at = now_datetime()
-    doc.save(ignore_permissions=True)
-    if decision == "Approved":
-        enroll_member(doc.course, doc.member)
-    if decision == "Revoked":
-        name = frappe.db.exists(
-            "LMS Enrollment", {"course": doc.course, "member": doc.member}
-        )
-        if name:
-            frappe.delete_doc("LMS Enrollment", name, ignore_permissions=True)
+    previous_review = getattr(frappe.flags, "nightjar_payment_review", None)
+    frappe.flags.nightjar_payment_review = (doc.name, decision)
+    try:
+        doc.save(ignore_permissions=True)
+    finally:
+        frappe.flags.nightjar_payment_review = previous_review
+    # A narrow server-only context lets the existing enrollment hook accept
+    # this reviewed student without granting instructors generic enrollment rights.
+    previous = getattr(frappe.flags, 'nightjar_review_enrollment', None)
+    frappe.flags.nightjar_review_enrollment = (doc.course, doc.member)
+    try:
+        if decision == "Approved":
+            enroll_member(doc.course, doc.member)
+        if decision == "Revoked":
+            name = frappe.db.exists("LMS Enrollment", {"course": doc.course, "member": doc.member})
+            if name:
+                frappe.delete_doc("LMS Enrollment", name, ignore_permissions=True)
+    finally:
+        frappe.flags.nightjar_review_enrollment = previous
     return {"status": decision}
 
 
@@ -120,12 +158,47 @@ def requests():
         "creation",
         "review_note",
     ]
-    if is_admin():
-        fields += ["member", "reference"]
+    fields += ["member", "reference", "receipt_name", "receipt_size"]
     return frappe.get_all(
         "NJ Payment Request",
-        filters={} if is_admin() else {"member": member},
+        filters={"member": member},
         fields=fields,
         order_by="creation desc",
         limit_page_length=100,
     )
+
+
+@frappe.whitelist()
+def review_requests(start=0, status=None):
+    member = user()
+    if not is_staff(member):
+        deny("Payment review is available to teaching staff only.")
+    filters = {}
+    if not is_admin(member):
+        courses = frappe.get_all("Course Instructor", filters={"parenttype": "LMS Course", "instructor": member}, pluck="parent")
+        if not courses:
+            return {"items": [], "has_more": False}
+        filters["course"] = ["in", courses]
+    if status:
+        if status not in {"Pending", "Approved", "Rejected", "Revoked"}:
+            frappe.throw("Choose a valid request status.")
+        filters["status"] = status
+    start = max(0, int(start))
+    rows = frappe.get_all("NJ Payment Request", filters=filters,
+        fields=["name", "course", "member", "reference", "amount", "currency", "status", "creation",
+                "review_note", "reviewed_by", "receipt_name", "receipt_size"],
+        order_by="creation desc, name desc", start=start, limit_page_length=51)
+    for row in rows[:50]:
+        row.course_title = frappe.db.get_value("LMS Course", row.course, "title") or row.course
+    return {"items": rows[:50], "has_more": len(rows) > 50}
+
+
+@frappe.whitelist()
+@rate_limit(limit=30, seconds=60)
+def receipt(request):
+    from nightjar_learning.receipts import receipt_response
+    member = user()
+    doc = frappe.get_doc("NJ Payment Request", request)
+    if doc.member != member and not can_review(doc.course, member):
+        deny("You cannot access this receipt.")
+    return receipt_response(doc)

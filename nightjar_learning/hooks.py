@@ -62,6 +62,7 @@ override_whitelisted_methods[
 ] = "nightjar_learning.guards.serve_resource"
 
 doc_events["LMS Course Review"] = {"validate": "nightjar_learning.community.validate_review"}
+before_request = ['nightjar_learning.navigation.before_request']
 after_request = ['nightjar_learning.navigation.after_request']
 override_whitelisted_methods.update({
     'lms.lms.utils.get_quiz_with_questions': 'nightjar_learning.assessments.get_quiz_with_questions',

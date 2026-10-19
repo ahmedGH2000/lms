@@ -12,6 +12,7 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { rpc, boot, money, duration } from "./api";
 import CourseCard from "./CourseCard.vue";
+import Notice from "./Notice.vue";
 import AccountPanel from "./AccountPanel.vue";
 import Reviews from "./Reviews.vue";
 import Members from "./Members.vue";
@@ -38,9 +39,10 @@ const commentText = ref(""),
   replyTo = ref(null),
   paymentOpen = ref(false),
   paymentRef = ref(""),
-  adminNotes = ref({});
+  paymentFile = ref(null),
+  featuredImageFailed = ref(false);
 const signedIn = boot.user !== "Guest",
-  compatible = boot.api_contract === 1,
+  compatible = boot.api_contract === 2,
   admin =
     boot.user === "Administrator" || boot.roles.includes("System Manager"),
   staff =
@@ -51,7 +53,7 @@ const view = computed(
   ),
   firstName = computed(() => boot.full_name?.split(" ")[0] || "Learner");
 const featured = computed(
-    () => courses.value.find((c) => c.featured) || courses.value[0],
+    () => courses.value[0],
   ),
   allLessons = computed(
     () => course.value?.chapters.flatMap((c) => c.lessons) || [],
@@ -166,8 +168,8 @@ async function load() {
     } else if (view.value === "dashboard" && signedIn) {
       mine.value = await rpc("api.dashboard");
       requests.value = await rpc("payments.requests");
-    } else if (view.value === "payments" && admin)
-      requests.value = await rpc("payments.requests");
+    } else if (view.value === "payments" && staff)
+      location.assign("/lms/payment-requests");
     else if (view.value === "catalog") await catalog();
   } catch (e) {
     if (n === routeSeq) error.value = e.message;
@@ -211,16 +213,36 @@ function enroll() {
     resume();
   });
 }
+function chooseReceipt(event) {
+  error.value = "";
+  const file = event.target.files?.[0];
+  paymentFile.value = null;
+  if (!file) return;
+  if (!/\.(jpe?g|png|pdf)$/i.test(file.name) || !file.size || file.size > 10 * 1024 * 1024) {
+    error.value = "Choose one JPG, PNG, or PDF receipt no larger than 10 MB.";
+    event.target.value = "";
+    return;
+  }
+  paymentFile.value = file;
+}
+function closePayment() { if (!busy.value) paymentOpen.value = false; }
 function sendPayment() {
   act(async () => {
-    await rpc(
-      "payments.request_payment",
-      { course: course.value.name, reference: paymentRef.value },
-      true,
-    );
+    const data = new FormData();
+    data.set("course", course.value.name);
+    data.set("reference", paymentRef.value.trim());
+    if (paymentFile.value) data.set("receipt", paymentFile.value);
+    const result = await rpc("payments.request_payment", data, true);
+    paymentRef.value = "";
+    paymentFile.value = null;
+    if (result.existing) {
+      paymentOpen.value = false;
+      notice.value = "You already have a request for this course. Check its status in My learning; no new receipt was saved.";
+      return;
+    }
     paymentOpen.value = false;
     notice.value =
-      "Request received. Your administrator will verify payment before granting access.";
+      "Request received. Your instructor or administrator will verify payment before granting access.";
   });
 }
 function sendComment() {
@@ -253,17 +275,7 @@ function complete() {
       : "Complete the required lesson activities first, then refresh your progress.";
   });
 }
-function decide(r, decision) {
-  act(async () => {
-    await rpc(
-      "payments.decide",
-      { request: r.name, decision, note: adminNotes.value[r.name] || "" },
-      true,
-    );
-    requests.value = await rpc("payments.requests");
-    notice.value = `Request ${decision.toLowerCase()}.`;
-  });
-}
+
 function trap(e) {
   if (e.key !== "Tab") return;
   const a = [
@@ -279,9 +291,11 @@ function trap(e) {
     a[0]?.focus();
   }
 }
+watch(featured, () => { featuredImageFailed.value = false; });
 watch(paymentOpen, async (open) => {
   document.body.style.overflow = open ? "hidden" : "";
   if (open) {
+    paymentFile.value = null;
     previousFocus = document.activeElement;
     await nextTick();
     document.getElementById("payment-reference")?.focus();
@@ -315,7 +329,7 @@ onBeforeUnmount(() => {
   <a class="skip-link" href="#main" @click.prevent="documentFocus"
     >Skip to content</a
   >
-  <header class="site-header">
+  <header class="site-header" :inert="paymentOpen">
     <div class="header-inner">
       <a class="brand" href="#"
         ><svg viewBox="0 0 40 40" aria-hidden="true">
@@ -345,7 +359,7 @@ onBeforeUnmount(() => {
         ><a href="#view=dashboard" :class="{ active: view === 'dashboard' }"
           >My learning</a
         ><a v-if="staff" href="/lms">Teaching studio ↗</a
-        ><a v-if="admin" href="#view=payments">Payments</a
+        ><a v-if="staff" href="/lms/payment-requests">Payments</a
         ><a v-if="admin" href="#view=members">Students</a>
       </nav>
       <a v-if="!signedIn" class="button small" href="#view=login">Sign in</a
@@ -359,18 +373,9 @@ onBeforeUnmount(() => {
       >
     </div>
   </header>
-  <main id="main" class="main-shell" tabindex="-1">
-    <div
-      v-if="error"
-      id="action-error"
-      tabindex="-1"
-      class="notice error"
-      role="alert"
-    >
-      {{ error }}
-      <button class="text-button" @click="load">Refresh this page</button>
-    </div>
-    <div v-if="notice" class="notice success" role="status">{{ notice }}</div>
+  <main id="main" class="main-shell" tabindex="-1" :inert="paymentOpen">
+    <Notice id="action-error" tabindex="-1" :message="paymentOpen ? '' : error" kind="error" @dismiss="error = ''" />
+    <Notice :message="notice" @dismiss="notice = ''" />
     <div v-if="!compatible" class="empty" role="alert">
       <h2>A platform update needs to finish.</h2>
       <p>Please contact the administrator, or refresh after the update is complete.</p>
@@ -411,23 +416,10 @@ onBeforeUnmount(() => {
         v-if="featured && !catalogError && !catalogLoading && !search && !category && !level && !page"
         class="featured"
       >
-        <div class="featured-art">
-          <div class="code-window">
-            <div class="window-dots">
-              <i></i><i></i><i></i><span>your-next-project</span>
-            </div>
-            <pre><span class="code-muted">// Every great project begins here.</span>
-<span class="code-purple">const</span> nextStep = {
-  curiosity: <span class="code-blue">true</span>,
-  practice: <span class="code-green">'a little, every day'</span>,
-  possibilities: <span class="code-blue">Infinity</span>
-};
-
-<span class="code-purple">await</span> you.build(nextStep);▌</pre>
-            <div class="terminal-line">✓ &nbsp; Ready when you are.</div>
-          </div>
-          <span class="art-sticker">Press play.<br />Make progress.</span>
-        </div>
+        <a class="featured-art" :href="`#course=${encodeURIComponent(featured.name)}`" :aria-label="'Explore ' + featured.title">
+          <img v-if="featured.image && !featuredImageFailed" :src="featured.image" :alt="featured.title" class="featured-course-image" @error="featuredImageFailed = true" />
+          <div v-else class="featured-fallback"><span aria-hidden="true">↗</span><strong>{{ featured.title }}</strong><small>Your next learning adventure</small></div>
+        </a>
         <div class="featured-copy">
           <span class="featured-label">In focus</span>
           <h2>{{ featured.title }}</h2>
@@ -598,8 +590,9 @@ onBeforeUnmount(() => {
             <div>
               <b>{{ r.course }}</b>
               <p>
-                {{ r.review_note || "Waiting for administrator verification." }}
+                {{ r.review_note || "Waiting for instructor or administrator verification." }}
               </p>
+              <a v-if="r.receipt_name" :href="'/api/method/nightjar_learning.payments.receipt?request=' + encodeURIComponent(r.name)">Download your receipt</a>
             </div>
             <span class="status-pill">{{ r.status }}</span>
           </div>
@@ -610,66 +603,12 @@ onBeforeUnmount(() => {
         <a class="button" href="#view=login">Sign in</a>
       </div></template
     >
-    <template v-else-if="view === 'payments'"
-      ><section class="page-intro">
-        <h1>Payment approvals</h1>
-        <p>Verify each transfer independently before granting access.</p>
-      </section>
-      <div v-if="!admin" class="empty">
-        Only a system administrator can review payments.
-      </div>
-      <template v-else
-        ><div v-if="!requests.length" class="empty">
-          No payment requests to review.
-        </div>
-        <div v-for="r in requests" :key="r.name" class="approval-card">
-          <div>
-            <h3>{{ r.course }}</h3>
-            <p>{{ r.member }}</p>
-            <p>
-              Reference: {{ r.reference }} · {{ r.currency }} {{ r.amount }}
-            </p>
-            <span class="status-pill">{{ r.status }}</span>
-          </div>
-          <div
-            v-if="['Pending', 'Approved'].includes(r.status)"
-            class="approval-actions"
-          >
-            <label :for="r.name">Verification note</label
-            ><textarea
-              :id="r.name"
-              v-model="adminNotes[r.name]"
-              maxlength="1000"
-              placeholder="Record how you verified the payment"
-            ></textarea>
-            <div>
-              <button
-                v-if="r.status === 'Pending'"
-                class="button"
-                :disabled="busy"
-                @click="decide(r, 'Approved')"
-              >
-                Approve access</button
-              ><button
-                v-if="r.status === 'Pending'"
-                class="quiet"
-                :disabled="busy"
-                @click="decide(r, 'Rejected')"
-              >
-                Reject</button
-              ><button
-                v-else
-                class="quiet"
-                :disabled="busy"
-                @click="decide(r, 'Revoked')"
-              >
-                Revoke access
-              </button>
-            </div>
-          </div>
-        </div></template
-      ></template
-    >
+    <section v-else-if="view === 'payments'" class="page-intro">
+      <h1>Payment requests</h1>
+      <p v-if="staff">Open your teaching workspace to review enrollment requests.</p>
+      <a v-if="staff" href="/lms/payment-requests" class="button">Open payment requests</a>
+      <p v-else>Check your enrollment requests in <a href="#view=dashboard">My learning</a>.</p>
+    </section>
     <template v-else-if="course"
       ><a
         class="back-link"
@@ -928,7 +867,7 @@ onBeforeUnmount(() => {
       ></template
     >
   </main>
-  <footer class="site-footer">
+  <footer class="site-footer" :inert="paymentOpen">
     <a class="brand" href="#">nightjar<span>learning</span></a>
     <p>Stay curious. Keep building.</p>
     <span>Built for curious minds.</span>
@@ -936,20 +875,20 @@ onBeforeUnmount(() => {
   <div
     v-if="paymentOpen"
     class="modal-backdrop"
-    @click.self="paymentOpen = false"
+    @click.self="closePayment"
   >
     <section
       class="modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="payment-title"
-      @keydown.esc="paymentOpen = false"
+      @keydown.esc="closePayment"
       @keydown="trap"
     >
       <button
         class="modal-close quiet"
         aria-label="Close payment request"
-        @click="paymentOpen = false"
+        @click="closePayment" :disabled="busy"
       >
         ×</button
       ><span class="featured-label">Your next step</span>
@@ -957,21 +896,26 @@ onBeforeUnmount(() => {
       <p>{{ course.title }} · {{ money(course) }}</p>
       <p>
         Follow your administrator’s payment instructions, then enter the
-        transfer reference. A reference alone does not confirm payment.
+        payment details below. You can also attach a receipt. Access opens after approval.
       </p>
-      <p v-if="error" class="notice error" role="alert">{{ error }}</p>
+      <Notice :message="error" kind="error" @dismiss="error = ''" />
       <form @submit.prevent="sendPayment">
-        <label for="payment-reference">Transfer or receipt reference</label
+        <label for="payment-reference">Payment details (required)</label
         ><input
           id="payment-reference"
           v-model="paymentRef"
+          :disabled="busy"
           minlength="3"
           maxlength="140"
           required
-          placeholder="Your payment reference"
-        /><button class="button" :disabled="busy">
+          placeholder="For example: transfer reference, date, and payer name"
+        />
+        <label for="payment-receipt">Receipt (optional)</label>
+        <input id="payment-receipt" type="file" accept=".jpg,.jpeg,.png,.pdf" :disabled="busy" @change="chooseReceipt" aria-describedby="receipt-help" />
+        <p id="receipt-help" class="muted">One JPG, PNG, or PDF · up to 10 MB. Only you and authorized teaching staff can download it.</p>
+        <button class="button" :disabled="busy">
           {{ busy ? "Sending…" : "Send for verification" }}</button
-        ><button type="button" class="quiet" @click="paymentOpen = false">
+        ><button type="button" class="quiet" @click="closePayment" :disabled="busy">
           Cancel
         </button>
       </form>
