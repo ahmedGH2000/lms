@@ -1,0 +1,53 @@
+name: nightjar-learning
+services:
+  db:
+    image: mariadb:10.11
+    command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci]
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
+    volumes:
+      - database:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+  permissions:
+    image: ${BENCH_IMAGE:-frappe/bench:latest}
+    user: root
+    working_dir: /tmp
+    network_mode: none
+    command: [bash, -c, 'chown frappe:frappe /home/frappe/work']
+    volumes:
+      - bench:/home/frappe/work
+  app:
+    image: ${BENCH_IMAGE:-frappe/bench:latest}
+    working_dir: /home/frappe/work
+    command: [bash, /workspace/deploy/init.sh]
+    depends_on:
+      permissions:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      SHELL: /bin/bash
+      SITE_NAME: nightjar.localhost
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+      NIGHTJAR_VIDEO_SECRET: ${NIGHTJAR_VIDEO_SECRET:?Set NIGHTJAR_VIDEO_SECRET}
+      NIGHTJAR_MEDIA_ROOT: /private-media
+      CYPRESS_INSTALL_BINARY: '0'
+    ports:
+      - 127.0.0.1:8000:8000
+      - 127.0.0.1:9000:9000
+    volumes:
+      - bench:/home/frappe/work
+      - ..:/workspace:ro
+      - ${MEDIA_PATH:-../private-media}:/private-media:ro
+volumes:
+  database:
+  bench:

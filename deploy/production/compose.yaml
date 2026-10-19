@@ -1,0 +1,185 @@
+name: nightjar-learning
+
+x-image: &image
+  image: ${NIGHTJAR_IMAGE:-nightjar-learning:2026.10.15.2}
+  pull_policy: never
+  restart: unless-stopped
+
+x-app-environment: &app-environment
+  SITE_NAME: ${SITE_NAME:?Set SITE_NAME in .env}
+  NIGHTJAR_VIDEO_SECRET: ${NIGHTJAR_VIDEO_SECRET:?Set NIGHTJAR_VIDEO_SECRET in .env}
+  NIGHTJAR_MEDIA_ROOT: /private-media
+  NIGHTJAR_USE_ACCEL: "0"
+
+x-app-volumes: &app-volumes
+  - sites:/home/frappe/frappe-bench/sites
+  - logs:/home/frappe/frappe-bench/logs
+  - ${MEDIA_PATH:?Set MEDIA_PATH in .env}:/private-media:ro
+
+services:
+  db:
+    image: mariadb:10.11@sha256:dc9dd57be7f46ad6f350c598a331d64f295899c4abac3ec5652eff831fc38a6c
+    platform: linux/amd64
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MARIADB_AUTO_UPGRADE: "1"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis-cache:
+    image: redis:7-alpine@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2
+    platform: linux/amd64
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis-queue:
+    image: redis:7-alpine@sha256:ca0acbb137c1dc3339c8b147a58fd6f42775d4599327b50e7b116c23de501af2
+    platform: linux/amd64
+    restart: unless-stopped
+    volumes:
+      - redis-queue-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  configurator:
+    <<: *image
+    restart: "no"
+    entrypoint: [bash, -c]
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host db;
+        bench set-config -gp db_port 3306;
+        bench set-config -g redis_cache redis://redis-cache:6379;
+        bench set-config -g redis_queue redis://redis-queue:6379;
+        bench set-config -g redis_socketio redis://redis-queue:6379;
+        bench set-config -gp socketio_port 9000;
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+
+  site-init:
+    <<: *image
+    restart: "no"
+    command: [nightjar-site-init]
+    environment:
+      <<: *app-environment
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+    volumes: *app-volumes
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+
+  backend:
+    <<: *image
+    build:
+      context: ../..
+      dockerfile: deploy/production/Containerfile
+    environment:
+      <<: *app-environment
+      GUNICORN_THREADS: "4"
+      GUNICORN_WORKERS: "2"
+      GUNICORN_TIMEOUT: "120"
+    volumes: *app-volumes
+    depends_on:
+      site-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, 'curl -fsS -H "Host: $${SITE_NAME}" http://127.0.0.1:8000/api/method/ping >/dev/null']
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  websocket:
+    <<: *image
+    command: [node, /home/frappe/frappe-bench/apps/frappe/socketio.js]
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      site-init:
+        condition: service_completed_successfully
+
+  queue-short:
+    <<: *image
+    command: [bench, worker, --queue, "short,default"]
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      site-init:
+        condition: service_completed_successfully
+
+  queue-long:
+    <<: *image
+    command: [bench, worker, --queue, "long,default,short"]
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      site-init:
+        condition: service_completed_successfully
+
+  scheduler:
+    <<: *image
+    command: [bench, schedule]
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      site-init:
+        condition: service_completed_successfully
+
+  frontend:
+    <<: *image
+    command: [nginx-entrypoint.sh]
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      NGINX_LISTEN_PORT: "8080"
+      FRAPPE_SITE_NAME_HEADER: ${SITE_NAME:?Set SITE_NAME in .env}
+      UPSTREAM_REAL_IP_ADDRESS: 172.16.0.0/12
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "on"
+      PROXY_READ_TIMEOUT: "120"
+      CLIENT_MAX_BODY_SIZE: 100m
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - ../../nightjar_learning/public:/home/frappe/frappe-bench/assets/nightjar_learning:ro
+    ports:
+      - 127.0.0.1:${HTTP_PORT:-8088}:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+      websocket:
+        condition: service_started
+
+volumes:
+  db-data:
+  redis-queue-data:
+  sites:
+  logs:
+

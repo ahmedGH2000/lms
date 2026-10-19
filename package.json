@@ -1,0 +1,1 @@
+{"name":"nightjar-learning","private":true,"version":"0.1.0","scripts":{"build":"cd frontend && npm ci && npm run build"},"license":"AGPL-3.0-or-later"}

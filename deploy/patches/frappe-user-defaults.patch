@@ -1,0 +1,21 @@
+diff --git a/frappe/core/doctype/user/user.py b/frappe/core/doctype/user/user.py
+index 77bfbf5..bcc664d 100644
+--- a/frappe/core/doctype/user/user.py
++++ b/frappe/core/doctype/user/user.py
+@@ -939,7 +939,15 @@ def ask_pass_update():
+ 	password_list = frappe.get_all(
+ 		"User Email", filters={"awaiting_password": 1, "used_oauth": 0}, pluck="parent", distinct=True
+ 	)
+-	set_default("email_user_password", ",".join(password_list))
++	value = ",".join(sorted(password_list))
++	# Saving an unrelated learning account must not acquire the global defaults
++	# row lock when the mailbox reminder has not changed. An absent, empty value
++	# also means there are no pending mailbox passwords.
++	current = frappe.db.get_value(
++		"DefaultValue", {"defkey": "email_user_password", "parent": "__default"}, "defvalue"
++	)
++	if (current or "") != value:
++		set_default("email_user_password", value)
+ 
+ 
+ def _get_user_for_update_password(key, old_password):

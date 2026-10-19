@@ -1,0 +1,142 @@
+[
+  {
+    "test": "Catalog has no horizontal overflow at 320px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog has no horizontal overflow at 390px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog has no horizontal overflow at 768px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog has no horizontal overflow at 1024px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog has no horizontal overflow at 1440px",
+    "result": "PASS"
+  },
+  {
+    "test": "Mobile navigation opens",
+    "result": "PASS"
+  },
+  {
+    "test": "Native signup creates account and shows missing-email setup guidance",
+    "result": "PASS"
+  },
+  {
+    "test": "Signup server failure shows persistent inline error and enables retry",
+    "result": "PASS"
+  },
+  {
+    "test": "Signup network failure explains uncertain outcome",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator signs in through real login form",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor form validates missing fields inline",
+    "result": "PASS"
+  },
+  {
+    "test": "Mobile instructor creation succeeds with one request despite repeated click",
+    "result": "PASS"
+  },
+  {
+    "test": "Successful instructor save remains visible and cannot be resubmitted",
+    "result": "PASS"
+  },
+  {
+    "test": "Mobile instructor form has no horizontal overflow",
+    "result": "PASS"
+  },
+  {
+    "test": "Desktop instructor duplicate rejection is visible in form",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor server failure keeps form open and allows retry",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor network failure keeps a readable inline error",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog server failure shows actionable error instead of blank content",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog recovers using visible retry control",
+    "result": "PASS"
+  },
+  {
+    "test": "Student signs in through native login form",
+    "result": "PASS"
+  },
+  {
+    "test": "Course detail fits phone viewport",
+    "result": "PASS"
+  },
+  {
+    "test": "Student can enroll in a free course from the mobile UI",
+    "result": "PASS"
+  },
+  {
+    "test": "Encrypted HLS plays in Chromium with account watermark and saved playback heartbeat",
+    "result": "PASS"
+  },
+  {
+    "test": "Student can post a lesson comment and sees the saved comment",
+    "result": "PASS"
+  },
+  {
+    "test": "Lesson completion updates visibly",
+    "result": "PASS"
+  },
+  {
+    "test": "Lesson layout has no horizontal overflow at 320px",
+    "result": "PASS"
+  },
+  {
+    "test": "Lesson layout has no horizontal overflow at 390px",
+    "result": "PASS"
+  },
+  {
+    "test": "Lesson layout has no horizontal overflow at 768px",
+    "result": "PASS"
+  },
+  {
+    "test": "Lesson layout has no horizontal overflow at 1440px",
+    "result": "PASS"
+  },
+  {
+    "test": "Enrolled course appears in responsive student dashboard",
+    "result": "PASS"
+  },
+  {
+    "test": "Payment request dialog fits phone viewport and locks background scrolling",
+    "result": "PASS"
+  },
+  {
+    "test": "Payment dialog closes with Escape",
+    "result": "PASS"
+  },
+  {
+    "test": "Payment request submits but does not grant paid access",
+    "result": "PASS"
+  },
+  {
+    "test": "Student cannot use instructor management form",
+    "result": "PASS"
+  },
+  {
+    "test": "No uncaught browser JavaScript errors in tested flows",
+    "result": "PASS"
+  }
+]

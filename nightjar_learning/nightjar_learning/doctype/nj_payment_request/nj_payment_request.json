@@ -1,0 +1,93 @@
+{
+  "doctype": "DocType",
+  "name": "NJ Payment Request",
+  "module": "Nightjar Learning",
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "field_order": [
+    "member",
+    "course",
+    "amount",
+    "currency",
+    "reference",
+    "status",
+    "reviewed_by",
+    "reviewed_at",
+    "review_note"
+  ],
+  "fields": [
+    {
+      "fieldname": "member",
+      "label": "Member",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "course",
+      "label": "Course",
+      "fieldtype": "Link",
+      "options": "LMS Course",
+      "reqd": 1
+    },
+    {
+      "fieldname": "amount",
+      "label": "Amount",
+      "fieldtype": "Currency",
+      "reqd": 1
+    },
+    {
+      "fieldname": "currency",
+      "label": "Currency",
+      "fieldtype": "Link",
+      "options": "Currency",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reference",
+      "label": "Reference",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "options": "Pending\nApproved\nRejected\nRevoked",
+      "default": "Pending",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_by",
+      "label": "Reviewed By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_at",
+      "label": "Reviewed At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "review_note",
+      "label": "Review Note",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    }
+  ],
+  "track_changes": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

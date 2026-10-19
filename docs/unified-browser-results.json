@@ -1,0 +1,94 @@
+[
+  {
+    "test": "Catalog fits 320px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog fits 390px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog fits 768px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog fits 1024px",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog fits 1440px",
+    "result": "PASS"
+  },
+  {
+    "test": "Signup with chosen password",
+    "result": "PASS"
+  },
+  {
+    "test": "Custom student login and dashboard",
+    "result": "PASS"
+  },
+  {
+    "test": "Custom profile save",
+    "result": "PASS"
+  },
+  {
+    "test": "Profile fits phone",
+    "result": "PASS"
+  },
+  {
+    "test": "Enrollment and lesson comment stay in Nightjar",
+    "result": "PASS"
+  },
+  {
+    "test": "Progress completion",
+    "result": "PASS"
+  },
+  {
+    "test": "Student course review",
+    "result": "PASS"
+  },
+  {
+    "test": "Native quiz renders inside Nightjar lesson",
+    "result": "PASS"
+  },
+  {
+    "test": "Student completes native quiz inside Nightjar",
+    "result": "PASS"
+  },
+  {
+    "test": "Old student LMS link routes into Nightjar",
+    "result": "PASS"
+  },
+  {
+    "test": "Password change refreshes authenticated profile",
+    "result": "PASS"
+  },
+  {
+    "test": "Custom logout",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator uses same custom login",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator creates student in Nightjar",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor reply displayed on course review",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator deletes review reply",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator moderates lesson discussion",
+    "result": "PASS"
+  },
+  {
+    "test": "No uncaught browser errors",
+    "result": "PASS"
+  }
+]

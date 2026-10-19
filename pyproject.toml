@@ -1,0 +1,14 @@
+[build-system]
+requires = ["flit_core>=3.9,<4"]
+build-backend = "flit_core.buildapi"
+[project]
+name = "nightjar_learning"
+version = "0.1.0"
+description = "Private learning experience and protected HLS for Frappe Learning"
+authors = [{name="Nightjar contributors"}]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text="AGPL-3.0-or-later"}
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<16.0.0"
+lms = ">=2.0.0,<3.0.0"

@@ -1,0 +1,38 @@
+[
+  {
+    "test": "All difficulty filters return valid results and reset successfully",
+    "result": "PASS"
+  },
+  {
+    "test": "Failed filter request shows service failure instead of zero courses",
+    "result": "PASS"
+  },
+  {
+    "test": "Catalog retry restores cards and clears the error",
+    "result": "PASS"
+  },
+  {
+    "test": "Initial catalog failure does not claim the library is empty",
+    "result": "PASS"
+  },
+  {
+    "test": "Late failed request cannot overwrite a newer filter result",
+    "result": "PASS"
+  },
+  {
+    "test": "Successful empty result and clear-filters action work",
+    "result": "PASS"
+  },
+  {
+    "test": "Missing backend method produces useful signup error without a traceback",
+    "result": "PASS"
+  },
+  {
+    "test": "Old backend boot blocks incompatible forms before submitting",
+    "result": "PASS"
+  },
+  {
+    "test": "No uncaught errors in recovery scenarios",
+    "result": "PASS"
+  }
+]

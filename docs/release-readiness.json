@@ -1,0 +1,8 @@
+{
+  "release": "2026.10.15.2",
+  "api_methods": 27,
+  "database": "ok",
+  "redis_write": "ok",
+  "review_schema": "ok",
+  "environment": "native local Frappe, not Docker"
+}

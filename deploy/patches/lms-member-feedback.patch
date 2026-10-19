@@ -1,0 +1,354 @@
+diff --git a/frontend/src/components/Modals/NewMemberModal.vue b/frontend/src/components/Modals/NewMemberModal.vue
+index 7c47369..4288e68 100644
+--- a/frontend/src/components/Modals/NewMemberModal.vue
++++ b/frontend/src/components/Modals/NewMemberModal.vue
+@@ -8,12 +8,28 @@
+ 				label: isEdit ? __('Save') : __('Add'),
+ 				variant: 'solid',
+ 				loading: submitting,
++				disabled: submitting,
+ 				onClick: ({ close }: any) => submit(close),
+ 			},
+ 		]"
+ 	>
+ 		<template #default>
+ 			<div class="space-y-4">
++				<p
++					v-if="submitError"
++					role="alert"
++					style="background: #fff0ef; color: #7b231d; border-color: #cf817a"
++					class="rounded border border-outline-red-2 bg-surface-red-1 p-3 text-sm text-ink-red-4 break-words"
++				>
++					{{ submitError }}
++				</p>
++				<p
++					v-if="createdMessage"
++					role="status"
++					class="rounded bg-surface-gray-2 p-3 text-sm text-ink-gray-8"
++				>
++					{{ createdMessage }}
++				</p>
+ 				<FormControl
+ 					v-model="member.email"
+ 					:label="__('Email')"
+@@ -23,10 +39,14 @@
+ 					:disabled="isEdit"
+ 					@keyup.enter="submit()"
+ 				/>
+-				<div v-if="!isEdit" class="flex items-center gap-3">
++				<div
++					v-if="!isEdit"
++					class="flex flex-col sm:flex-row items-stretch gap-3"
++				>
+ 					<FormControl
+ 						v-model="member.first_name"
+ 						:label="__('First Name')"
++						:required="true"
+ 						placeholder="Jane"
+ 						type="text"
+ 						class="w-full"
+@@ -79,6 +99,18 @@ import { cleanError } from '@/utils'
+ 
+ const show = defineModel<boolean>({ default: false })
+ const submitting = ref(false)
++const submitError = ref('')
++const createdMessage = ref('')
++const failure = (err: any) =>
++	cleanError(
++		typeof err?.messages?.[0] === 'string' &&
++			err.messages[0] !== 'Internal Server Error'
++			? err.messages[0]
++			: '',
++	) ||
++	__(
++		'Unable to confirm the save. Check the member list before retrying. If this continues, contact the administrator.',
++	)
+ 
+ const props = defineProps<{
+ 	defaultRoles?: string[]
+@@ -115,6 +147,8 @@ const roles = reactive({
+ const initialRoles = reactive({ ...roles })
+ 
+ const resetForm = () => {
++	submitError.value = ''
++	createdMessage.value = ''
+ 	member.email = ''
+ 	member.first_name = ''
+ 	member.last_name = ''
+@@ -151,43 +185,37 @@ const submit = (close?: () => void) => {
+ 	return isEdit.value ? saveRoles(close) : addMember(close)
+ }
+ 
+-const assignRoles = async (userEmail: string) => {
+-	const selectedRoles = Object.entries(roles).filter(([_, checked]) => checked)
+-
+-	for (const [key, _] of selectedRoles) {
+-		await call('lms.lms.api.save_role', {
+-			user: userEmail,
+-			role: ROLE_MAP[key],
+-			value: 1,
+-		})
+-	}
+-}
+-
+ const addMember = async (close?: () => void) => {
+-	if (!member.email?.trim()) {
+-		toast.error(__('Email is required'))
++	submitError.value = ''
++	if (
++		!member.first_name.trim() ||
++		!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())
++	) {
++		submitError.value = __('Enter a first name and a valid email address.')
+ 		return
+ 	}
+ 
+ 	submitting.value = true
+ 	try {
+-		const user = await call('frappe.client.insert', {
+-			doc: {
+-				doctype: 'User',
+-				email: member.email.trim(),
+-				first_name: member.first_name.trim() || undefined,
+-				last_name: member.last_name.trim() || undefined,
+-			},
++		const user = await call('nightjar_learning.accounts.create_member', {
++			email: member.email.trim(),
++			first_name: member.first_name.trim(),
++			last_name: member.last_name.trim(),
++			roles: Object.entries(roles)
++				.filter(([_, checked]) => checked)
++				.map(([key]) => ROLE_MAP[key]),
+ 		})
+ 
+-		await assignRoles(user.name)
+-
+ 		toast.success(__('Member added successfully'))
+ 		emit('created', user)
+ 		resetForm()
+-		close?.()
++		createdMessage.value = user.email_sent
++			? __('Member created. A password setup email has been queued.')
++			: __(
++					'Member created. No setup email was sent; configure outgoing email and send a password reset from the user account.',
++				)
+ 	} catch (err: any) {
+-		toast.error(cleanError(err.messages?.[0]) || __('Unable to add member'))
++		submitError.value = failure(err)
+ 	} finally {
+ 		submitting.value = false
+ 	}
+@@ -197,6 +225,7 @@ const saveRoles = async (close?: () => void) => {
+ 	if (!props.editMember?.name) return
+ 
+ 	submitting.value = true
++	submitError.value = ''
+ 	try {
+ 		for (const key of Object.keys(ROLE_MAP) as (keyof typeof roles)[]) {
+ 			if (roles[key] !== initialRoles[key]) {
+@@ -212,7 +241,7 @@ const saveRoles = async (close?: () => void) => {
+ 		emit('updated')
+ 		close?.()
+ 	} catch (err: any) {
+-		toast.error(cleanError(err.messages?.[0]) || __('Unable to update member'))
++		submitError.value = failure(err)
+ 	} finally {
+ 		submitting.value = false
+ 	}
+diff --git a/frontend/src/pages/Forms/MemberForm.vue b/frontend/src/pages/Forms/MemberForm.vue
+index 4ae9f3a..f8b941c 100644
+--- a/frontend/src/pages/Forms/MemberForm.vue
++++ b/frontend/src/pages/Forms/MemberForm.vue
+@@ -9,6 +9,28 @@
+ 				{{ refusal }}
+ 			</div>
+ 			<div v-else data-testid="member-fields" class="space-y-4">
++				<p
++					v-if="submitError"
++					role="alert"
++					style="background: #fff0ef; color: #7b231d; border-color: #cf817a"
++					class="rounded border border-outline-red-2 bg-surface-red-1 p-3 text-sm text-ink-red-4 break-words"
++				>
++					{{ submitError }}
++				</p>
++				<p
++					v-if="createdMessage"
++					role="status"
++					class="rounded bg-surface-gray-2 p-3 text-sm text-ink-gray-8"
++				>
++					{{ createdMessage }}
++				</p>
++				<p
++					v-if="isEdit && memberFetch.error"
++					role="alert"
++					class="text-ink-red-4"
++				>
++					{{ __('Could not load this member. Close this form and try again.') }}
++				</p>
+ 				<FormControl
+ 					v-model="member.email"
+ 					:label="__('Email')"
+@@ -18,10 +40,14 @@
+ 					:disabled="isEdit"
+ 					@keyup.enter="submit()"
+ 				/>
+-				<div v-if="!isEdit" class="flex items-center gap-3">
++				<div
++					v-if="!isEdit"
++					class="flex flex-col sm:flex-row items-stretch gap-3"
++				>
+ 					<FormControl
+ 						v-model="member.first_name"
+ 						:label="__('First Name')"
++						:required="true"
+ 						placeholder="Jane"
+ 						type="text"
+ 						class="w-full"
+@@ -70,7 +96,7 @@
+ 					:label="__('Save')"
+ 					variant="solid"
+ 					:loading="submitting"
+-					:disabled="isEdit && !memberRow"
++					:disabled="submitting || (isEdit && !memberRow) || !!createdMessage"
+ 					@click="submit()"
+ 				/>
+ 			</div>
+@@ -149,6 +175,8 @@ const roles = reactive({
+ 
+ const initialRoles = reactive({ ...roles })
+ const submitting = ref(false)
++const submitError = ref('')
++const createdMessage = ref('')
+ 
+ // C4 — edit mode used to be seeded from the row Members.vue already held in
+ // memory, which on a cold deep link does not exist.
+@@ -171,7 +199,7 @@ onMounted(() => {
+ })
+ 
+ const memberRow = computed<MemberRow | null>(() =>
+-	isEdit.value ? memberFetch.data ?? null : null
++	isEdit.value ? (memberFetch.data ?? null) : null,
+ )
+ 
+ // `immediate` matters: the modal's watcher only ran when the dialog opened, and
+@@ -185,7 +213,7 @@ watch(
+ 			initialRoles[key] = roles[key]
+ 		}
+ 	},
+-	{ immediate: true }
++	{ immediate: true },
+ )
+ 
+ // Stands in for the modal's `created`/`updated` emits: a route component has no
+@@ -198,45 +226,56 @@ const reloadMembers = () => {
+ }
+ 
+ const errorMessage = (err: { messages?: string[] }, fallback: string): string =>
+-	cleanError(err.messages?.[0]) || fallback
+-
+-const assignRoles = async (userEmail: string) => {
+-	for (const [key, checked] of Object.entries(roles)) {
+-		if (checked)
+-			await call('lms.lms.api.save_role', {
+-				user: userEmail,
+-				role: ROLE_MAP[key],
+-				value: 1,
+-			})
+-	}
+-}
++	cleanError(
++		typeof err?.messages?.[0] === 'string' &&
++			err.messages[0] !== 'Internal Server Error'
++			? err.messages[0]
++			: '',
++	) || fallback
+ 
+ const addMember = async () => {
+-	if (!member.email?.trim()) {
+-		toast.error(__('Email is required'))
++	submitError.value = ''
++	if (
++		!member.first_name.trim() ||
++		!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())
++	) {
++		submitError.value = __('Enter a first name and a valid email address.')
+ 		return
+ 	}
+ 
+ 	submitting.value = true
+ 	try {
+-		const created = await call('frappe.client.insert', {
+-			doc: {
+-				doctype: 'User',
+-				email: member.email.trim(),
+-				first_name: member.first_name.trim() || undefined,
+-				last_name: member.last_name.trim() || undefined,
+-			},
++		const created = await call('nightjar_learning.accounts.create_member', {
++			email: member.email.trim(),
++			first_name: member.first_name.trim(),
++			last_name: member.last_name.trim(),
++			roles: Object.entries(roles)
++				.filter(([_, checked]) => checked)
++				.map(([key]) => ROLE_MAP[key]),
+ 		})
+ 
+-		await assignRoles(created.name)
+-
+-		if (user.data?.is_system_manager) updateOnboardingStep('invite_students')
+-		capture('user_added')
++		// Analytics must never turn a saved account into a reported save failure.
++		try {
++			if (user.data?.is_system_manager)
++				Promise.resolve(updateOnboardingStep('invite_students')).catch(() => {})
++			capture('user_added')
++		} catch {}
+ 		toast.success(__('Member added successfully'))
+ 		reloadMembers()
+-		close()
++		createdMessage.value = created.email_sent
++			? __(
++					'Member created. A password setup email has been queued. You can close this form.',
++				)
++			: __(
++					'Member created. No setup email was sent; configure outgoing email and send a password reset from the user account. You can close this form.',
++				)
+ 	} catch (err: any) {
+-		toast.error(errorMessage(err, __('Unable to add member')))
++		submitError.value = errorMessage(
++			err,
++			__(
++				'Unable to confirm the save. Check the member list before retrying. If this continues, contact the administrator.',
++			),
++		)
+ 	} finally {
+ 		submitting.value = false
+ 	}
+@@ -244,6 +283,7 @@ const addMember = async () => {
+ 
+ const saveRoles = async () => {
+ 	submitting.value = true
++	submitError.value = ''
+ 	try {
+ 		for (const key of Object.keys(ROLE_MAP) as (keyof typeof roles)[]) {
+ 			if (roles[key] !== initialRoles[key]) {
+@@ -259,14 +299,17 @@ const saveRoles = async () => {
+ 		reloadMembers()
+ 		close()
+ 	} catch (err: any) {
+-		toast.error(errorMessage(err, __('Unable to update member')))
++		submitError.value = errorMessage(
++			err,
++			__('Unable to update member. Please try again.'),
++		)
+ 	} finally {
+ 		submitting.value = false
+ 	}
+ }
+ 
+ const submit = () => {
+-	if (refusal.value || submitting.value) return
++	if (refusal.value || submitting.value || createdMessage.value) return
+ 	// Edit mode before the row lands would post a role diff against an all-off
+ 	// snapshot and strip every role the member has; the button is disabled for
+ 	// the same reason.

@@ -1,0 +1,142 @@
+[
+  {
+    "test": "Mismatched registration passwords rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Student creates account without email delivery",
+    "result": "PASS"
+  },
+  {
+    "test": "Student signs in with chosen password",
+    "result": "PASS"
+  },
+  {
+    "test": "Signup cannot assign administrator roles",
+    "result": "PASS"
+  },
+  {
+    "test": "Student native LMS entry redirects to Nightjar",
+    "result": "PASS"
+  },
+  {
+    "test": "Login entry redirects to custom login",
+    "result": "PASS"
+  },
+  {
+    "test": "Student edits own profile",
+    "result": "PASS"
+  },
+  {
+    "test": "Student cannot list other accounts",
+    "result": "PASS"
+  },
+  {
+    "test": "Student cannot reset another password",
+    "result": "PASS"
+  },
+  {
+    "test": "Wrong current password rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Student signs in again after failed password verification",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator custom login",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator keeps native teaching access",
+    "result": "PASS"
+  },
+  {
+    "test": "Unauthorized lesson remains blocked",
+    "result": "PASS"
+  },
+  {
+    "test": "Free enrollment",
+    "result": "PASS"
+  },
+  {
+    "test": "Enrolled student posts course review",
+    "result": "PASS"
+  },
+  {
+    "test": "Duplicate review rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Student cannot impersonate instructor reply",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor replies to review",
+    "result": "PASS"
+  },
+  {
+    "test": "Student posts lesson discussion",
+    "result": "PASS"
+  },
+  {
+    "test": "Student replies in discussion",
+    "result": "PASS"
+  },
+  {
+    "test": "Student cannot moderate posts",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator removes comment preserving thread",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator deletes review reply",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator deletes review",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator creates student with password",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator sets student password",
+    "result": "PASS"
+  },
+  {
+    "test": "Assigned password works",
+    "result": "PASS"
+  },
+  {
+    "test": "Another student enrolls in same course",
+    "result": "PASS"
+  },
+  {
+    "test": "Students can reply to each other",
+    "result": "PASS"
+  },
+  {
+    "test": "Guest quiz read denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Guest cannot list accounts",
+    "result": "PASS"
+  },
+  {
+    "test": "CSRF required for authenticated mutations",
+    "result": "PASS"
+  },
+  {
+    "test": "Profile password update",
+    "result": "PASS"
+  },
+  {
+    "test": "Changed password authenticates",
+    "result": "PASS"
+  }
+]

@@ -1,0 +1,78 @@
+{
+  "index.html": {
+    "file": "app-DaUPi66U.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/Player.vue"
+    ],
+    "css": [
+      "index.css"
+    ],
+    "assets": [
+      "hanken-grotesk-latin-400-normal.woff2",
+      "hanken-grotesk-latin-400-normal.woff",
+      "hanken-grotesk-latin-500-normal.woff2",
+      "hanken-grotesk-latin-500-normal.woff",
+      "hanken-grotesk-latin-600-normal.woff2",
+      "hanken-grotesk-latin-600-normal.woff",
+      "hanken-grotesk-latin-700-normal.woff2",
+      "hanken-grotesk-latin-700-normal.woff",
+      "hanken-grotesk-latin-800-normal.woff2",
+      "hanken-grotesk-latin-800-normal.woff"
+    ]
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff": {
+    "file": "hanken-grotesk-latin-400-normal.woff",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff2": {
+    "file": "hanken-grotesk-latin-400-normal.woff2",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff2"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-500-normal.woff": {
+    "file": "hanken-grotesk-latin-500-normal.woff",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-500-normal.woff"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-500-normal.woff2": {
+    "file": "hanken-grotesk-latin-500-normal.woff2",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-500-normal.woff2"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-600-normal.woff": {
+    "file": "hanken-grotesk-latin-600-normal.woff",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-600-normal.woff"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-600-normal.woff2": {
+    "file": "hanken-grotesk-latin-600-normal.woff2",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-600-normal.woff2"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-700-normal.woff": {
+    "file": "hanken-grotesk-latin-700-normal.woff",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-700-normal.woff"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-700-normal.woff2": {
+    "file": "hanken-grotesk-latin-700-normal.woff2",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-700-normal.woff2"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff": {
+    "file": "hanken-grotesk-latin-800-normal.woff",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff"
+  },
+  "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff2": {
+    "file": "hanken-grotesk-latin-800-normal.woff2",
+    "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff2"
+  },
+  "src/Player.vue": {
+    "file": "assets/Player-D9OpXDD-.js",
+    "name": "Player",
+    "src": "src/Player.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ],
+    "css": [
+      "Player.css"
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "doctype": "DocType",
+  "name": "NJ Video Position",
+  "module": "Nightjar Learning",
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "field_order": [
+    "member",
+    "lesson",
+    "position",
+    "duration"
+  ],
+  "fields": [
+    {
+      "fieldname": "member",
+      "label": "Member",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "lesson",
+      "label": "Lesson",
+      "fieldtype": "Link",
+      "options": "Course Lesson",
+      "reqd": 1
+    },
+    {
+      "fieldname": "position",
+      "label": "Position",
+      "fieldtype": "Float"
+    },
+    {
+      "fieldname": "duration",
+      "label": "Duration",
+      "fieldtype": "Float"
+    }
+  ],
+  "track_changes": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

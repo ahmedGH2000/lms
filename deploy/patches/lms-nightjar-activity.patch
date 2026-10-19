@@ -1,0 +1,57 @@
+diff --git a/frontend/src/main.js b/frontend/src/main.js
+index cc0033e..97da0ea 100644
+--- a/frontend/src/main.js
++++ b/frontend/src/main.js
+@@ -2,6 +2,7 @@ import './index.css'
+ import { createApp, watch } from 'vue'
+ import router from './router'
+ import App from './App.vue'
++import NightjarActivity from './NightjarActivity.vue'
+ import { createPinia } from 'pinia'
+ import dayjs from '@/utils/dayjs'
+ import { createDialog } from '@/utils/dialogs'
+@@ -13,7 +14,7 @@ import { telemetryPlugin } from 'frappe-ui/frappe'
+ import { registerDirectives } from './directives'
+ 
+ let pinia = createPinia()
+-let app = createApp(App)
++let app = createApp(new URLSearchParams(location.search).has('nightjar_lesson') ? NightjarActivity : App)
+ setConfig('resourceFetcher', frappeRequest)
+ 
+ app.use(FrappeUI)
+diff --git a/frontend/src/NightjarActivity.vue b/frontend/src/NightjarActivity.vue
+new file mode 100644
+index 0000000..548678e
+--- /dev/null
++++ b/frontend/src/NightjarActivity.vue
+@@ -0,0 +1,30 @@
++<script setup>
++import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
++import { createResource } from 'frappe-ui'
++import EditorJS from '@editorjs/editorjs'
++import { getEditorTools, sanitizeEditorJs, enablePlyr } from '@/utils'
++import LessonContent from '@/components/LessonContent.vue'
++const data = ref(null), error = ref(''), holder = ref(null)
++let editor, observer
++onMounted(async () => {
++ document.documentElement.classList.add('dark')
++ try {
++  data.value = await createResource({url:'nightjar_learning.api.lesson_detail'}).fetch({lesson:new URLSearchParams(location.search).get('nightjar_lesson')})
++  await nextTick()
++  if(data.value.content) {
++   editor = new EditorJS({holder:holder.value, readOnly:true, tools:getEditorTools(false, {}, {studentView:true}), data:sanitizeEditorJs(JSON.parse(data.value.content))})
++   await editor.isReady
++  }
++  enablePlyr()
++  observer = new ResizeObserver(()=>parent.postMessage({type:'nightjar-activity-height',height:document.body.scrollHeight},location.origin))
++  observer.observe(document.body)
++ } catch(e) {error.value=e.messages?.join(' ') || e.message || 'Unable to open this activity. Reload the lesson.'}
++})
++onBeforeUnmount(()=>{observer?.disconnect();editor?.destroy?.()})
++</script>
++<template><main class="nightjar-activity"><p v-if="error" role="alert">{{error}}</p><template v-else-if="data"><div v-if="data.content" ref="holder"></div><LessonContent v-else :content="data.body || ''" :youtube="data.youtube" :quizId="data.quiz_id" /></template><p v-else>Opening lesson resources…</p></main></template>
++<style>
++html,body,#app {background:#0d192b!important;color:#edf4ff!important;min-height:0!important;height:auto!important}
++.nightjar-activity{padding:16px;font-family:'Hanken Grotesk',system-ui,sans-serif;overflow-wrap:anywhere}
++.ce-block__content{max-width:none}.codex-editor__redactor{padding-bottom:0!important}.nightjar-activity img,.nightjar-activity video{max-width:100%}
++</style>

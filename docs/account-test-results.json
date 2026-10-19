@@ -1,0 +1,82 @@
+[
+  {
+    "test": "Original code reproduces the shared-row lock timeout",
+    "result": "PASS"
+  },
+  {
+    "test": "Patched unchanged reminder does not wait on held row",
+    "result": "PASS"
+  },
+  {
+    "test": "Native signup succeeds while unrelated reminder row is locked",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator login",
+    "result": "PASS"
+  },
+  {
+    "test": "Member creation rejects missing CSRF token",
+    "result": "PASS"
+  },
+  {
+    "test": "Malformed roles rejected with validation feedback",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor creation succeeds while reminder row is locked",
+    "result": "PASS"
+  },
+  {
+    "test": "Duplicate member rejected with readable message",
+    "result": "PASS"
+  },
+  {
+    "test": "Guest cannot create instructors",
+    "result": "PASS"
+  },
+  {
+    "test": "Privileged role rejected by allowlist",
+    "result": "PASS"
+  },
+  {
+    "test": "Missing first name rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Malformed email rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Secondary evaluator failure rejects whole request",
+    "result": "PASS"
+  },
+  {
+    "test": "Student login",
+    "result": "PASS"
+  },
+  {
+    "test": "Signed-in student cannot create instructors",
+    "result": "PASS"
+  },
+  {
+    "test": "Saved instructor has Course Creator role",
+    "result": "PASS"
+  },
+  {
+    "test": "Signup user has student role and no privileged roles",
+    "result": "PASS"
+  },
+  {
+    "test": "Rejected privileged account was not inserted",
+    "result": "PASS"
+  },
+  {
+    "test": "Failed evaluator creation rolls back User and roles",
+    "result": "PASS"
+  },
+  {
+    "test": "Student request created no account",
+    "result": "PASS"
+  }
+]

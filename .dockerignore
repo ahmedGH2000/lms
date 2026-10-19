@@ -1,0 +1,14 @@
+.git
+.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+node_modules
+**/node_modules
+private-media
+**/__pycache__
+**/*.pyc
+.pytest_cache
+docs/*.json
+docs/*.txt
+

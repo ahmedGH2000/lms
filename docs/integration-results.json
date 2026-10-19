@@ -1,0 +1,182 @@
+[
+  {
+    "test": "Guest catalog",
+    "result": "PASS"
+  },
+  {
+    "test": "Guest protected lesson denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Registration through Frappe API",
+    "result": "PASS"
+  },
+  {
+    "test": "Wrong password rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "alice login and page boot",
+    "result": "PASS"
+  },
+  {
+    "test": "bob login and page boot",
+    "result": "PASS"
+  },
+  {
+    "test": "admin login and page boot",
+    "result": "PASS"
+  },
+  {
+    "test": "teacher login and page boot",
+    "result": "PASS"
+  },
+  {
+    "test": "Unenrolled student denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Free enrollment",
+    "result": "PASS"
+  },
+  {
+    "test": "Enrolled lesson access",
+    "result": "PASS"
+  },
+  {
+    "test": "Paid enrollment requires approval",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor reads own course",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor denied unrelated paid course",
+    "result": "PASS"
+  },
+  {
+    "test": "Manual payment request",
+    "result": "PASS"
+  },
+  {
+    "test": "Student approval attempt denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Pending request cannot read paid lesson",
+    "result": "PASS"
+  },
+  {
+    "test": "Administrator approves and enrolls",
+    "result": "PASS"
+  },
+  {
+    "test": "Approved student reads paid lesson",
+    "result": "PASS"
+  },
+  {
+    "test": "Approval retry idempotent",
+    "result": "PASS"
+  },
+  {
+    "test": "Other student denied paid content",
+    "result": "PASS"
+  },
+  {
+    "test": "Lesson comment creation",
+    "result": "PASS"
+  },
+  {
+    "test": "Instructor reply",
+    "result": "PASS"
+  },
+  {
+    "test": "Other student denied discussion",
+    "result": "PASS"
+  },
+  {
+    "test": "Completion updates real dashboard progress",
+    "result": "PASS"
+  },
+  {
+    "test": "Private playback grant",
+    "result": "PASS"
+  },
+  {
+    "test": "Unenrolled playback denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Protected HLS manifest",
+    "result": "PASS"
+  },
+  {
+    "test": "Protected AES key",
+    "result": "PASS"
+  },
+  {
+    "test": "Protected encrypted segment",
+    "result": "PASS"
+  },
+  {
+    "test": "Shared token denied in other session",
+    "result": "PASS"
+  },
+  {
+    "test": "Path traversal denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Heartbeat saves resume position",
+    "result": "PASS"
+  },
+  {
+    "test": "Invalid video position rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Revocation removes paid access",
+    "result": "PASS"
+  },
+  {
+    "test": "Generic REST cannot enroll another member",
+    "result": "PASS"
+  },
+  {
+    "test": "Generic REST cannot read other member enrollment",
+    "result": "PASS"
+  },
+  {
+    "test": "Generic REST cannot forge payment",
+    "result": "PASS"
+  },
+  {
+    "test": "Missing CSRF rejected",
+    "result": "PASS"
+  },
+  {
+    "test": "Generic REST discussion query hides private comments",
+    "result": "PASS"
+  },
+  {
+    "test": "Native lesson API denies unpaid student",
+    "result": "PASS"
+  },
+  {
+    "test": "Generic REST lesson read denied",
+    "result": "PASS"
+  },
+  {
+    "test": "Generic REST lesson list hides paid lessons",
+    "result": "PASS"
+  },
+  {
+    "test": "Guest denied signed video token",
+    "result": "PASS"
+  },
+  {
+    "test": "Existing playback token denied immediately after enrollment removal",
+    "result": "PASS"
+  }
+]

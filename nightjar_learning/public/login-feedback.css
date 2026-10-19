@@ -1,0 +1,30 @@
+.nightjar-signup-feedback:not(:empty) {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #71a4c5;
+  border-radius: 8px;
+  background: #eef7fc;
+  color: #173b53;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.nightjar-signup-feedback[data-error="true"] {
+  background: #fff0ef;
+  color: #7b231d;
+  border-color: #cf817a;
+}
+@media (max-width: 480px) {
+  .for-login .page-card,
+  .for-signup .page-card {
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+  .for-signup input,
+  .for-signup select {
+    font-size: 16px;
+  }
+  .for-signup button[type="submit"] {
+    min-height: 44px;
+  }
+}

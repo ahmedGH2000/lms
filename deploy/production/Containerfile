@@ -1,0 +1,87 @@
+# syntax=docker/dockerfile:1
+
+# These immutable amd64 manifests correspond to Frappe 15.122.0. The tag keeps
+# the human-readable version visible while the digest prevents silent changes.
+ARG BUILD_IMAGE=frappe/build:v15.122.0@sha256:faef16b5c30370dff92519e7254a182753ee4cf30dcd3d3292264e2604258d3f
+ARG BASE_IMAGE=frappe/base:v15.122.0@sha256:7a760cd764468430fc64c6b85d685d58f1e52e0493fd11db067ac4fee98b2cd9
+
+FROM ${BUILD_IMAGE} AS builder
+
+USER frappe
+ENV NODE_OPTIONS=--max-old-space-size=6144
+
+RUN bench init \
+      --frappe-branch=v15.122.0 \
+      --frappe-path=https://github.com/frappe/frappe.git \
+      --no-procfile \
+      --no-backups \
+      --skip-redis-config-generation \
+      --verbose \
+      /home/frappe/frappe-bench
+
+WORKDIR /home/frappe/frappe-bench
+
+# Nightjar was verified against these exact upstream commits. Fetch the commits
+# explicitly so a moving version-15 branch cannot alter the deployed code.
+RUN git clone --branch version-15 --depth=1 --origin upstream \
+      https://github.com/frappe/payments.git apps/payments && \
+    git -C apps/payments fetch --no-tags --depth=1 upstream \
+      9885a6e500104f1f160add47d55b370773e67a81 && \
+    git -C apps/payments checkout --detach \
+      9885a6e500104f1f160add47d55b370773e67a81 && \
+    git clone --branch version-15 --depth=1 --origin upstream \
+      https://github.com/frappe/lms.git apps/lms && \
+    git -C apps/lms fetch --no-tags --depth=1 upstream \
+      87168fc7b2f24559e474ea4702cf1aa63b0db4e8 && \
+    git -C apps/lms checkout --detach \
+      87168fc7b2f24559e474ea4702cf1aa63b0db4e8 && \
+    bench setup requirements frappe payments lms
+
+COPY --chown=frappe:0 . /tmp/nightjar-learning
+
+RUN mkdir -p apps/nightjar_learning && \
+    cp -a /tmp/nightjar-learning/. apps/nightjar_learning/ && \
+    ./env/bin/pip install -e apps/nightjar_learning && \
+    ./env/bin/python apps/nightjar_learning/deploy/verify_release.py \
+      apps/nightjar_learning --imports && \
+    ./env/bin/python apps/nightjar_learning/deploy/apply_upstream_patches.py \
+      /home/frappe/frappe-bench
+
+RUN bench build --app frappe && \
+    yarn --cwd apps/lms/frontend install --frozen-lockfile && \
+    yarn --cwd apps/lms/frontend build && \
+    npm --prefix apps/nightjar_learning/frontend ci && \
+    npm --prefix apps/nightjar_learning/frontend run build && \
+    printf '{}\n' > sites/common_site_config.json && \
+    find apps -mindepth 1 -path '*/.git' -prune -exec rm -rf '{}' +
+
+FROM ${BASE_IMAGE} AS runtime
+
+LABEL org.opencontainers.image.title="Nightjar Learning" \
+      org.opencontainers.image.version="2026.10.15.2" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later"
+
+USER root
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder --chown=frappe:0 --chmod=g=u \
+  /home/frappe/frappe-bench /home/frappe/frappe-bench
+
+WORKDIR /home/frappe/frappe-bench
+
+RUN chmod g=u /home/frappe/frappe-bench && \
+    cp -r sites/assets /home/frappe/frappe-bench/assets && \
+    rm -rf sites/assets
+
+COPY --chmod=755 deploy/production/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chmod=755 deploy/production/start.sh /usr/local/bin/start.sh
+COPY --chmod=755 deploy/production/site-init.sh /usr/local/bin/nightjar-site-init
+
+VOLUME ["/home/frappe/frappe-bench/sites", "/home/frappe/frappe-bench/logs"]
+
+USER frappe
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["start.sh"]
+
