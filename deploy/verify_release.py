@@ -59,7 +59,7 @@ def build(root):
     patch = root / 'deploy/patches/lms-nightjar-payments.patch'
     if patch.exists():
         methods.update(re.findall(r"nightjar_learning\.(payments\.[a-z_]+)", patch.read_text()))
-    manifest = {'release': '2026.10.18.1', 'files': files, 'methods': sorted(methods)}
+    manifest = {'release': '2026.10.26-preview.1', 'files': files, 'methods': sorted(methods)}
     (root / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     return manifest
 

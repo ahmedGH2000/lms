@@ -2,19 +2,26 @@ import html
 import frappe
 from frappe.rate_limiter import rate_limit
 from nightjar_learning.access import user, instructor, require_lesson, can_learn, deny
+from nightjar_learning.localization import translate_fields, translated
 
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=120, seconds=60)
-def catalog(search="", category="", level="", start=0):
+def catalog(search="", category="", level="", start=0, lang=None):
     start = max(0, min(int(start), 10000))
     filters = {"published": 1}
+    or_filters = {}
     if category:
         filters["category"] = str(category)[:140]
     if level in {"Beginner", "Intermediate", "Advanced"}:
         filters["nj_difficulty"] = level
     if search:
-        filters["title"] = ["like", "%" + str(search)[:100] + "%"]
+        pattern = "%" + str(search)[:100] + "%"
+        or_filters = {
+            "title": ["like", pattern],
+            "nj_title_ar": ["like", pattern],
+            "nj_title_en": ["like", pattern],
+        }
     rows = frappe.get_all(
         "LMS Course",
         filters=filters,
@@ -31,12 +38,18 @@ def catalog(search="", category="", level="", start=0):
             "lessons",
             "featured",
             "card_gradient",
+            "nj_title_ar",
+            "nj_title_en",
+            "nj_short_introduction_ar",
+            "nj_short_introduction_en",
         ],
         order_by="published_on desc, creation desc, name asc",
         start=start,
         limit_page_length=24,
+        **({"or_filters": or_filters} if or_filters else {}),
     )
     for row in rows:
+        translate_fields(row, ("title", "short_introduction"), lang)
         teachers = frappe.get_all(
             "Course Instructor",
             filters={"parenttype": "LMS Course", "parent": row.name},
@@ -50,15 +63,26 @@ def catalog(search="", category="", level="", start=0):
     categories = frappe.get_all(
         "LMS Course", filters={"published": 1}, pluck="category", distinct=True
     )
+    if or_filters:
+        count_rows = frappe.get_all(
+            "LMS Course",
+            filters=filters,
+            or_filters=or_filters,
+            fields=["count(name) as total"],
+            limit_page_length=1,
+        )
+        count = count_rows[0].get("total", 0) if count_rows else 0
+    else:
+        count = frappe.db.count("LMS Course", filters=filters)
     return dict(
         courses=rows,
         categories=sorted(c for c in categories if c),
-        total=frappe.db.count("LMS Course", filters=filters),
+        total=count,
     )
 
 
 @frappe.whitelist()
-def dashboard():
+def dashboard(lang=None):
     member = user()
     result = []
     for row in frappe.get_all(
@@ -79,10 +103,15 @@ def dashboard():
                 "nj_difficulty",
                 "category",
                 "lessons",
+                "nj_title_ar",
+                "nj_title_en",
+                "nj_short_introduction_ar",
+                "nj_short_introduction_en",
             ],
             as_dict=True,
         )
         if c and can_learn(row.course):
+            translate_fields(c, ("title", "short_introduction"), lang)
             c.update(
                 dict(progress=row.progress or 0, current_lesson=row.current_lesson)
             )
@@ -91,7 +120,7 @@ def dashboard():
 
 
 @frappe.whitelist(allow_guest=True)
-def course_detail(course):
+def course_detail(course, lang=None):
     doc = frappe.get_doc("LMS Course", course)
     if not doc.published and not instructor(course):
         deny()
@@ -101,14 +130,20 @@ def course_detail(course):
         lessons = []
         for item in ch.lessons:
             l = frappe.db.get_value(
-                "Course Lesson", item.lesson, ["name", "title"], as_dict=True
+                "Course Lesson",
+                item.lesson,
+                ["name", "title", "nj_title_ar", "nj_title_en"],
+                as_dict=True,
             )
             if l:
+                translate_fields(l, ("title",), lang)
                 l.duration = frappe.db.get_value(
                     "NJ Video Asset", {"lesson": l.name, "active": 1}, "duration"
                 )
                 lessons.append(l)
-        chapters.append(dict(name=ch.name, title=ch.title, lessons=lessons))
+        chapters.append(
+            dict(name=ch.name, title=translated(ch, "title", lang), lessons=lessons)
+        )
     result = {
         k: doc.get(k)
         for k in [
@@ -141,21 +176,23 @@ def course_detail(course):
             for i in doc.instructors
         ],
     )
+    for field in ("title", "short_introduction", "description"):
+        result[field] = translated(doc, field, lang)
     return result
 
 
 @frappe.whitelist()
-def lesson_detail(lesson):
+def lesson_detail(lesson, lang=None):
     course = require_lesson(lesson)
     doc = frappe.get_doc("Course Lesson", lesson)
     return dict(
         name=doc.name,
-        title=doc.title,
+        title=translated(doc, "title", lang),
         course=course,
-        body=doc.body,
+        body=translated(doc, "body", lang),
         youtube=doc.youtube,
         quiz_id=doc.quiz_id,
-        content=doc.content,
+        content=translated(doc, "content", lang),
         private_video=bool(
             frappe.db.exists("NJ Video Asset", {"lesson": lesson, "active": 1})
         ),

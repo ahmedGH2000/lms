@@ -12,10 +12,14 @@ diff --git a/frontend/src/routes.js b/frontend/src/routes.js
 diff --git a/frontend/src/router.js b/frontend/src/router.js
 --- a/frontend/src/router.js
 +++ b/frontend/src/router.js
-@@ -42,6 +42,13 @@
+@@ -42,6 +42,17 @@
  		isLoggedIn = false
  	}
  
++	const savedNightjarLanguage = localStorage.getItem('nightjar-language')
++	const nightjarLanguage = String(savedNightjarLanguage || document.documentElement.lang || '').toLowerCase().startsWith('ar') ? 'ar' : 'en'
++	document.documentElement.lang = nightjarLanguage
++	document.documentElement.dir = nightjarLanguage === 'ar' ? 'rtl' : 'ltr'
 +	const staff = userResource.data?.is_system_manager || userResource.data?.is_moderator || userResource.data?.is_instructor || userResource.data?.name === 'Administrator'
 +	const activityFrame = window.self !== window.top && /\/(quizzes|assignments|programming-exercises)\//.test(to.path)
 +	if (!staff && !activityFrame && !new URLSearchParams(window.location.search).has('nightjar_lesson')) {
@@ -58,10 +62,13 @@ diff --git a/frontend/src/pages/NightjarPayments.vue b/frontend/src/pages/Nightj
 new file mode 100644
 --- /dev/null
 +++ b/frontend/src/pages/NightjarPayments.vue
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,74 @@
 +<script setup>
 +import { ref, onMounted, watch } from 'vue'
 +import { call } from 'frappe-ui'
++const arabic = document.documentElement.lang?.startsWith('ar')
++const t = (english, translated) => arabic ? translated : english
++const statusLabel = value => ({ Pending: t('Pending', 'قيد الانتظار'), Approved: t('Approved', 'مقبول'), Rejected: t('Rejected', 'مرفوض'), Revoked: t('Revoked', 'ملغى') })[value] || value
 +const rows = ref([]), status = ref('Pending'), start = ref(0), hasMore = ref(false)
 +const loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), notes = ref({})
 +let sequence = 0
@@ -75,22 +82,22 @@ new file mode 100644
 +    rows.value = data.items
 +    hasMore.value = data.has_more
 +  } catch (e) {
-+    if (current === sequence) { rows.value = []; hasMore.value = false; error.value = e.messages?.join(' ') || e.message || 'Could not load requests. Try again.' }
++    if (current === sequence) { rows.value = []; hasMore.value = false; error.value = e.messages?.join(' ') || e.message || t('Could not load requests. Try again.', 'تعذّر تحميل الطلبات. حاول مجدداً.') }
 +  } finally { if (current === sequence) loading.value = false }
 +}
 +async function decide(row, decision) {
 +  if (busy.value) return
 +  error.value = ''; notice.value = ''
 +  const note = notes.value[row.name]?.trim()
-+  if (!note) { error.value = 'Add a review note before choosing an action.'; return }
-+  if (decision === 'Revoked' && !window.confirm(`Remove ${row.member}’s access to ${row.course_title}?`)) return
++  if (!note) { error.value = t('Add a review note before choosing an action.', 'أضف ملاحظة مراجعة قبل اختيار الإجراء.'); return }
++  if (decision === 'Revoked' && !window.confirm(arabic ? `إزالة وصول ${row.member} إلى ${row.course_title}؟` : `Remove ${row.member}’s access to ${row.course_title}?`)) return
 +  busy.value = true
 +  try {
 +    await call('nightjar_learning.payments.decide', { request: row.name, decision, note })
-+    notice.value = `${row.member}: request ${decision.toLowerCase()}.`
++    notice.value = arabic ? `${row.member}: تم تحديث الطلب.` : `${row.member}: request ${decision.toLowerCase()}.`
 +    delete notes.value[row.name]
 +    await load(true)
-+  } catch (e) { error.value = e.messages?.join(' ') || e.message || 'The change could not be confirmed. Refresh before trying again.' }
++  } catch (e) { error.value = e.messages?.join(' ') || e.message || t('The change could not be confirmed. Refresh before trying again.', 'تعذّر تأكيد التغيير. حدّث الصفحة قبل المحاولة مجدداً.') }
 +  finally { busy.value = false }
 +}
 +watch(status, () => { start.value = 0; load() })
@@ -99,32 +106,32 @@ new file mode 100644
 +</script>
 +<template>
 +  <section class="nj-payments">
-+    <header><div><p class="nj-eyebrow">Teaching workspace</p><h1>Payment requests</h1><p>Review payment details, then grant access to your courses.</p></div><a href="/learn">Student view ↗</a></header>
-+    <div class="nj-toolbar"><label>Status <select v-model="status" :disabled="busy || loading"><option value="">All requests</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Revoked</option></select></label><button :disabled="loading || busy" @click="load">Refresh</button></div>
++    <header><div><p class="nj-eyebrow">{{ t('Teaching workspace', 'مساحة التدريس') }}</p><h1>{{ t('Payment requests', 'طلبات الدفع') }}</h1><p>{{ t('Review payment details, then grant access to your courses.', 'راجع تفاصيل الدفع ثم امنح الوصول إلى دوراتك.') }}</p></div><a href="/learn">{{ t('Student view', 'واجهة الطالب') }} ↗</a></header>
++    <div class="nj-toolbar"><label>{{ t('Status', 'الحالة') }} <select v-model="status" :disabled="busy || loading"><option value="">{{ t('All requests', 'كل الطلبات') }}</option><option value="Pending">{{ t('Pending', 'قيد الانتظار') }}</option><option value="Approved">{{ t('Approved', 'مقبول') }}</option><option value="Rejected">{{ t('Rejected', 'مرفوض') }}</option><option value="Revoked">{{ t('Revoked', 'ملغى') }}</option></select></label><button :disabled="loading || busy" @click="load">{{ t('Refresh', 'تحديث') }}</button></div>
 +    <Transition name="nj-feedback"><p v-if="error" class="nj-error" role="alert">{{ error }}</p></Transition>
 +    <Transition name="nj-feedback"><p v-if="notice" class="nj-success" role="status">{{ notice }}</p></Transition>
-+    <p v-if="loading" role="status">Loading requests…</p>
-+    <p v-else-if="!rows.length && !error" class="nj-empty">No {{ status.toLowerCase() }} requests here. Instructors see only courses they teach.</p>
++    <p v-if="loading" role="status">{{ t('Loading requests…', 'جارٍ تحميل الطلبات…') }}</p>
++    <p v-else-if="!rows.length && !error" class="nj-empty">{{ t('No requests here. Instructors see only courses they teach.', 'لا توجد طلبات هنا. يرى المدرّسون الدورات التي يدرّسونها فقط.') }}</p>
 +    <div v-else-if="!loading" class="nj-list">
 +      <article v-for="row in rows" :key="row.name" class="nj-request">
-+        <div class="nj-request-heading"><div><h2>{{ row.course_title }}</h2><p>{{ row.member }}</p></div><span class="nj-status">{{ row.status }}</span></div>
++        <div class="nj-request-heading"><div><h2>{{ row.course_title }}</h2><p>{{ row.member }}</p></div><span class="nj-status">{{ statusLabel(row.status) }}</span></div>
 +        <p class="nj-amount">{{ row.currency }} {{ Number(row.amount).toLocaleString() }} · {{ row.creation?.slice(0, 10) }}</p>
-+        <dl><dt>Student’s payment details</dt><dd>{{ row.reference }}</dd></dl>
-+        <a v-if="row.receipt_name" :href="'/api/method/nightjar_learning.payments.receipt?request=' + encodeURIComponent(row.name)" class="nj-receipt">Download receipt · {{ row.receipt_name }}</a>
-+        <p v-else class="nj-muted">No receipt attached.</p>
-+        <p v-if="row.review_note" class="nj-previous"><strong>Previous review:</strong> {{ row.review_note }}<span v-if="row.reviewed_by"> · {{ row.reviewed_by }}</span></p>
++        <dl><dt>{{ t('Student’s payment details', 'تفاصيل دفع الطالب') }}</dt><dd>{{ row.reference }}</dd></dl>
++        <a v-if="row.receipt_name" :href="'/api/method/nightjar_learning.payments.receipt?request=' + encodeURIComponent(row.name)" class="nj-receipt">{{ t('Download receipt', 'تنزيل الإيصال') }} · {{ row.receipt_name }}</a>
++        <p v-else class="nj-muted">{{ t('No receipt attached.', 'لا يوجد إيصال مرفق.') }}</p>
++        <p v-if="row.review_note" class="nj-previous"><strong>{{ t('Previous review:', 'المراجعة السابقة:') }}</strong> {{ row.review_note }}<span v-if="row.reviewed_by"> · {{ row.reviewed_by }}</span></p>
 +        <template v-if="['Pending', 'Approved'].includes(row.status)">
-+          <label :for="'review-' + row.name">Review note (required)</label>
-+          <textarea :id="'review-' + row.name" v-model="notes[row.name]" :disabled="busy" maxlength="1000" placeholder="How you verified payment, or why you are rejecting/revoking access" />
-+          <div class="nj-actions"><template v-if="row.status === 'Pending'"><button class="nj-primary" :disabled="busy" @click="decide(row, 'Approved')">Approve enrollment</button><button :disabled="busy" @click="decide(row, 'Rejected')">Reject</button></template><button v-else class="nj-danger" :disabled="busy" @click="decide(row, 'Revoked')">Revoke access</button></div>
++          <label :for="'review-' + row.name">{{ t('Review note (required)', 'ملاحظة المراجعة (مطلوبة)') }}</label>
++          <textarea :id="'review-' + row.name" v-model="notes[row.name]" :disabled="busy" maxlength="1000" :placeholder="t('How you verified payment, or why you are rejecting/revoking access', 'كيف تحققت من الدفع أو سبب الرفض أو إلغاء الوصول')" />
++          <div class="nj-actions"><template v-if="row.status === 'Pending'"><button class="nj-primary" :disabled="busy" @click="decide(row, 'Approved')">{{ t('Approve enrollment', 'قبول التسجيل') }}</button><button :disabled="busy" @click="decide(row, 'Rejected')">{{ t('Reject', 'رفض') }}</button></template><button v-else class="nj-danger" :disabled="busy" @click="decide(row, 'Revoked')">{{ t('Revoke access', 'إلغاء الوصول') }}</button></div>
 +        </template>
 +      </article>
 +    </div>
-+    <nav aria-label="Request pages" class="nj-pagination"><button :disabled="!start || loading || busy" @click="page(-50)">Previous</button><span>Page {{ start / 50 + 1 }}</span><button :disabled="!hasMore || loading || busy" @click="page(50)">Next</button></nav>
++    <nav :aria-label="t('Request pages', 'صفحات الطلبات')" class="nj-pagination"><button :disabled="!start || loading || busy" @click="page(-50)">{{ t('Previous', 'السابق') }}</button><span>{{ t('Page', 'الصفحة') }} {{ start / 50 + 1 }}</span><button :disabled="!hasMore || loading || busy" @click="page(50)">{{ t('Next', 'التالي') }}</button></nav>
 +  </section>
 +</template>
 +<style scoped>
-+.nj-payments{padding:32px;max-width:1050px;margin:0 auto;width:100%;color:var(--ink-gray-9,#20242b)}
++.nj-payments{padding:32px;max-width:1050px;margin:0 auto;width:100%;color:var(--ink-gray-9,#20242b);text-align:start}
 +header,.nj-request-heading,.nj-toolbar,.nj-actions,.nj-pagination{display:flex;justify-content:space-between;gap:16px;align-items:center}
 +header{margin-bottom:28px;align-items:flex-start}h1{font-size:28px;font-weight:650;margin:6px 0 10px}h2{font-size:18px;font-weight:600}.nj-eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#716382}
 +p{line-height:1.6}.nj-toolbar{margin-bottom:22px;justify-content:flex-start}.nj-toolbar label{display:flex;gap:10px;align-items:center}select,button,textarea{border:1px solid #ccd0d6;border-radius:8px;padding:10px 14px;background:var(--surface-base,#fff);color:inherit}button{font-size:14px;cursor:pointer;transition:background .2s,transform .2s}button:hover:not(:disabled){background:#f0edf6;transform:translateY(-1px)}button:disabled{opacity:.5;cursor:wait}.nj-list{display:grid;gap:18px}.nj-request{border:1px solid #e0e1e6;border-radius:14px;padding:24px;background:var(--surface-base,#fff)}.nj-status{font-size:12px;padding:6px 10px;background:#ece8f4;color:#514365;border-radius:20px}.nj-amount,.nj-muted{color:#70737b;font-size:13px;margin:12px 0}dt,label{font-size:13px;font-weight:600}.nj-request > label{display:block;margin-top:8px}dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 14px}a{color:#6d4d97;text-decoration:underline;text-underline-offset:3px}.nj-receipt{display:inline-block;margin-bottom:18px;overflow-wrap:anywhere}.nj-previous{padding:12px;background:#f4f2f8;color:#40364e;margin:12px 0;overflow-wrap:anywhere}textarea{display:block;width:100%;min-height:85px;margin:8px 0 14px}.nj-actions{justify-content:flex-start;flex-wrap:wrap}.nj-primary{background:#675080;color:#fff;border-color:#675080}.nj-primary:hover:not(:disabled){background:#523d6a}.nj-danger{color:#9c3636}.nj-error,.nj-success,.nj-empty{padding:16px;border-radius:10px;margin:14px 0}.nj-error{background:#fff0ed;color:#923b2f}.nj-success{background:#eaf6ef;color:#285c40}.nj-empty{background:#f5f4f7;color:#514761}.nj-pagination{justify-content:center;margin-top:24px}.nj-feedback-enter-active,.nj-feedback-leave-active{transition:opacity .2s,transform .2s}.nj-feedback-enter-from,.nj-feedback-leave-to{opacity:0;transform:translateY(-6px)}

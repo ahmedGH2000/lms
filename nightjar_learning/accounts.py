@@ -58,10 +58,10 @@ from nightjar_learning.access import user as current_user, is_admin, deny
 
 
 def validate_password(password, confirm):
-    if not isinstance(password, str) or not 12 <= len(password) <= 128:
-        frappe.throw('Choose a password between 12 and 128 characters.')
-    if password != confirm:
-        frappe.throw('The passwords do not match.')
+    from nightjar_learning.password_policy import password_error
+    error = password_error(password, confirm)
+    if error:
+        frappe.throw(_(error))
     from frappe.core.doctype.user.user import test_password_strength, handle_password_test_fail
     result = test_password_strength(password)
     feedback = result.get('feedback')

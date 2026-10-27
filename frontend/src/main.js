@@ -5,5 +5,6 @@ import "@fontsource/hanken-grotesk/latin-600.css";
 import "@fontsource/hanken-grotesk/latin-700.css";
 import "@fontsource/hanken-grotesk/latin-800.css";
 import App from "./App.vue";
+import "./i18n";
 import "./style.css";
 createApp(App).mount("#app");

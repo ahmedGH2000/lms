@@ -4,8 +4,13 @@ app_publisher = "Nightjar contributors"
 app_description = "Private learning experience for Frappe Learning"
 app_email = "maintainers@example.invalid"
 app_license = "AGPL-3.0-or-later"
-web_include_js = ["/assets/nightjar_learning/login-feedback.js"]
+web_include_js = [
+    "/assets/nightjar_learning/language-switch.js",
+    "/assets/nightjar_learning/login-feedback.js",
+]
 web_include_css = ["/assets/nightjar_learning/login-feedback.css"]
+app_include_js = ["/assets/nightjar_learning/language-switch.js"]
+app_include_css = ["/assets/nightjar_learning/login-feedback.css"]
 required_apps = ["lms"]
 after_install = "nightjar_learning.install.after_install"
 after_migrate = "nightjar_learning.install.after_install"

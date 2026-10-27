@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { rpc } from "./api";
+import { t } from "./i18n";
+import PasswordField from "./PasswordField.vue";
 const rows = ref([]),
   search = ref(""),
   page = ref(0),
@@ -25,7 +27,7 @@ async function run(fn) {
   try {
     await fn();
   } catch (e) {
-    error.value = e.message;
+    error.value = t(e.message);
   } finally {
     busy.value = false;
   }
@@ -55,7 +57,7 @@ function save() {
     selected.value = null;
     password.value = "";
     confirm.value = "";
-    notice.value = "Account saved.";
+    notice.value = t("Account saved.");
     await load();
   });
 }
@@ -64,10 +66,10 @@ function save() {
   <section>
     <div class="section-heading">
       <div>
-        <h1>Students</h1>
-        <p>Create student accounts and set passwords without email setup.</p>
+        <h1>{{ t("Students") }}</h1>
+        <p>{{ t("Create student accounts and set passwords without email setup.") }}</p>
       </div>
-      <button class="button" @click="select({})">Add student</button>
+      <button class="button" @click="select({})">{{ t("Add student") }}</button>
     </div>
     <p v-if="error" role="alert" class="notice error">{{ error }}</p>
     <p v-if="notice" role="status" class="notice success">{{ notice }}</p>
@@ -82,46 +84,32 @@ function save() {
         ><input
           v-model="search"
           type="search"
-          placeholder="Search by email"
-          aria-label="Search students" /></label
-      ><button class="button" :disabled="busy">Search</button>
+          :placeholder="t('Search by email')"
+          :aria-label="t('Search students')" /></label
+      ><button class="button" :disabled="busy">{{ t("Search") }}</button>
     </form>
     <form
       v-if="selected"
       class="account-panel stack-form"
       @submit.prevent="save"
     >
-      <h2>{{ selected.name ? "Set student password" : "New student" }}</h2>
+      <h2>{{ selected.name ? t("Set student password") : t("New student") }}</h2>
       <p v-if="selected.name">{{ selected.name }}</p>
       <template v-else
         ><label
-          >Full name<input v-model="name" required maxlength="140" /></label
+          >{{ t("Full name") }}<input v-model="name" required maxlength="140" /></label
         ><label
-          >Email<input
+          >{{ t("Email address") }}<input
             v-model="email"
             type="email"
             required /></label></template
-      ><label
-        >New password<input
-          v-model="password"
-          type="password"
-          autocomplete="new-password"
-          minlength="12"
-          maxlength="128"
-          required /></label
-      ><label
-        >Confirm password<input
-          v-model="confirm"
-          type="password"
-          autocomplete="new-password"
-          minlength="12"
-          maxlength="128"
-          required
-      /></label>
+      >
+      <PasswordField :key="`new-${selected.name || 'student'}`" v-model="password" :label="t('New password')" new-password />
+      <PasswordField :key="`confirm-${selected.name || 'student'}`" v-model="confirm" :label="t('Confirm password')" :confirm-with="password" />
       <div class="account-links">
-        <button class="button" :disabled="busy">Save account</button
+        <button class="button" :disabled="busy">{{ t("Save account") }}</button
         ><button type="button" class="quiet" @click="selected = null">
-          Cancel
+          {{ t("Cancel") }}
         </button>
       </div>
     </form>
@@ -131,21 +119,21 @@ function save() {
         <b>{{ r.full_name }}</b>
         <p>{{ r.name }}</p>
       </div>
-      <span>{{ r.enabled ? "Active" : "Disabled" }}</span
+      <span>{{ r.enabled ? t("Active") : t("Disabled") }}</span
       ><button
         v-if="r.user_type === 'Website User'"
         class="quiet"
         @click="select(r)"
       >
-        Set password</button
+        {{ t("Set password") }}</button
       ><a
         v-else
         class="text-button"
         :href="'/app/user/' + encodeURIComponent(r.name)"
-        >Staff settings ↗</a
+        >{{ t("Staff settings") }} ↗</a
       >
     </div>
-    <p v-if="!rows.length">No matching accounts.</p>
+    <p v-if="!rows.length">{{ t("No matching accounts.") }}</p>
     <div class="account-links">
       <button
         class="quiet"
@@ -155,8 +143,8 @@ function save() {
           run(load);
         "
       >
-        Previous</button
-      ><span>Page {{ page + 1 }}</span
+        {{ t("Previous") }}</button
+      ><span>{{ t("Page") }} {{ page + 1 }}</span
       ><button
         class="quiet"
         :disabled="rows.length < 50 || busy"
@@ -165,8 +153,8 @@ function save() {
           run(load);
         "
       >
-        Next</button
-      ><a href="/app/user" class="text-button">Advanced user settings ↗</a>
+        {{ t("Next") }}</button
+      ><a href="/app/user" class="text-button">{{ t("Advanced user settings") }} ↗</a>
     </div>
   </section>
 </template>

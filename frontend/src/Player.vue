@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import shaka from "shaka-player/dist/shaka-player.ui.js";
 import "shaka-player/dist/controls.css";
 import { rpc } from "./api";
+import { t } from "./i18n";
 const props = defineProps({ lesson: String });
 const video = ref(),
   container = ref(),
@@ -42,7 +43,7 @@ onMounted(async () => {
     shaka.polyfill.installAll();
     if (!shaka.Player.isBrowserSupported())
       throw new Error(
-        "This browser cannot play this video. Try a current Firefox, Chrome, or Safari browser.",
+        t("This browser cannot play this video. Try a current Firefox, Chrome, or Safari browser."),
       );
     grant = await rpc("video.authorize", { lesson: props.lesson }, true);
     if (dead) return;
@@ -71,13 +72,13 @@ onMounted(async () => {
           url.origin !== location.origin ||
           url.pathname !== "/api/method/nightjar_learning.video.resource"
         )
-          throw new Error("Unexpected media origin");
+          throw new Error(t("Unexpected media origin"));
         url.searchParams.set("token", grant.token);
         return url.toString();
       });
     });
     player.addEventListener("error", () => {
-      error.value = "Playback stopped. Reload the lesson to renew access.";
+      error.value = t("Playback stopped. Reload the lesson to renew access.");
     });
     await player.load(
       grant.manifest,
@@ -124,12 +125,12 @@ onBeforeUnmount(() => {
       preload="metadata"
       @ended="save('ended')"
       @pause="save('heartbeat', true)"
-      aria-label="Lesson video"
+      :aria-label="t('Lesson video')"
     ></video>
     <div class="watermark" :style="position" aria-hidden="true">
       {{ watermark }}
     </div>
-    <div v-if="loading" class="player-status">Preparing your lesson…</div>
+    <div v-if="loading" class="player-status">{{ t("Preparing your lesson…") }}</div>
   </div>
   <p v-if="error" class="notice error" role="alert">{{ error }}</p>
 </template>

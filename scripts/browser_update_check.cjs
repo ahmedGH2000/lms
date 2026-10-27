@@ -7,6 +7,7 @@ const entry=JSON.parse(fs.readFileSync(path.join(ui,'.vite/manifest.json')))['in
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
  const context=await browser.newContext(),page=await context.newPage();
+ await page.addInitScript(()=>{if(!localStorage.getItem('nightjar-language'))localStorage.setItem('nightjar-language','en')});
  let role='guest',loginRole='staff',failure=false,payments=[];const errors=[];let count=0;
  const pass=s=>{count++;console.log('PASS',s)};
  page.on('pageerror',e=>errors.push(e.message));
@@ -41,15 +42,23 @@ const entry=JSON.parse(fs.readFileSync(path.join(ui,'.vite/manifest.json')))['in
   return route.fulfill({contentType:'text/html',body:`<!DOCTYPE html><html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/nightjar_learning/ui/index.css"><body><script id="nightjar-boot" type="application/json">${JSON.stringify(boot)}</script><div id="app"></div><script type="module" src="/assets/nightjar_learning/ui/${entry}"></script></body></html>`});
  });
  try{
-  await page.goto('http://nightjar.test/learn');await page.locator('.featured-course-image').waitFor();
-  assert.equal(await page.locator('.featured-course-image').getAttribute('src'),'/course-image.svg');assert.equal(await page.locator('.featured h2').textContent(),'Build your first website');pass('Newest course shows its real thumbnail');
-  await page.locator('.course-card').nth(1).locator('.art-symbol').waitFor();pass('Broken image has fallback');
+  await page.goto('http://nightjar.test/learn');await page.locator('.course-card').first().waitFor();
+  assert.equal(await page.locator('.course-card img').getAttribute('src'),'/course-image.svg');assert.equal(await page.locator('.course-card h3').first().textContent(),'Build your first website');pass('Newest course shows its real thumbnail');
+  await page.locator('.course-card').nth(1).locator('.art-symbol').waitFor();assert.equal(await page.locator('.course-card').count(),2);pass('Each course appears once and broken image has fallback');
   for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}pass('Catalog fits phone, tablet and desktop');
   if(process.env.NJ_SCREENSHOTS){fs.mkdirSync(process.env.NJ_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.NJ_SCREENSHOTS,'catalog.png'),fullPage:true});}
-  await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.intro-side svg').evaluate(e=>getComputedStyle(e).animationName),'none');pass('Reduced motion disables animation');
-  await page.goto('http://nightjar.test/learn#view=signup');await page.getByLabel('Full name').fill('Test Learner');await page.getByLabel('Email address').fill('test@example.invalid');await page.getByLabel('Password',{exact:true}).fill('A-strong-test-password!');await page.getByLabel('Confirm password').fill('A-strong-test-password!');await page.getByRole('button',{name:'Create account',exact:true}).click();
+  await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.pyramid-arrival').evaluate(e=>getComputedStyle(e).animationName),'none');assert.equal(await page.locator('.pyramid-face').count(),4);pass('Reduced motion disables the solid 3D pyramid animation');
+  const beforeTurn=await page.locator('.pyramid-stage').getAttribute('style');await page.getByRole('button',{name:'Rotate the pyramid'}).click();await page.waitForTimeout(100);assert.notEqual(await page.locator('.pyramid-stage').getAttribute('style'),beforeTurn);pass('Pyramid has a working click/keyboard rotation alternative');
+  await page.goto('http://nightjar.test/learn#view=signup');await page.getByLabel('Full name').fill('Test Learner');await page.getByLabel('Email address').fill('test@example.invalid');
+  const passwordInput=page.getByLabel('Password',{exact:true});
+  for(const value of ['abc!1234','Abcd1234','Ab!1234','Abcdefg ']){await passwordInput.fill(value);assert.equal(await passwordInput.evaluate(e=>e.checkValidity()),false);}
+  await passwordInput.fill('qR7!v9m2');assert.equal(await passwordInput.evaluate(e=>e.checkValidity()),true);
+  await page.getByLabel('Confirm password',{exact:true}).fill('different');assert.equal(await page.getByLabel('Confirm password',{exact:true}).evaluate(e=>e.checkValidity()),false);
+  await page.getByLabel('Confirm password',{exact:true}).fill('qR7!v9m2');pass('Eight-character policy and confirmation validate inline');
+  await page.getByRole('button',{name:'Create account',exact:true}).click();
   await page.waitForURL('**#view=login');await page.getByText('Your account is ready. Sign in with your email and password.',{exact:true}).waitFor();assert.equal(await page.getByLabel('Email address').inputValue(),'test@example.invalid');assert.equal(await page.getByLabel('Password',{exact:true}).inputValue(),'');pass('Signup redirects to sign-in with confirmation and cleared password');
-  await page.getByLabel('Password',{exact:true}).fill('A-strong-test-password!');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL('**/lms');pass('Staff lands on LMS');
+  await page.getByLabel('Password',{exact:true}).fill('legacy');assert.equal(await page.getByLabel('Password',{exact:true}).evaluate(e=>e.checkValidity()),true);await page.getByRole('button',{name:'Show Password',exact:true}).click();assert.equal(await page.getByLabel('Password',{exact:true}).getAttribute('type'),'text');assert.equal(await page.getByLabel('Password',{exact:true}).inputValue(),'legacy');await page.getByRole('button',{name:'Hide Password',exact:true}).click();assert.equal(await page.getByLabel('Password',{exact:true}).getAttribute('type'),'password');pass('Visibility toggles preserve input and existing passwords can still sign in');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL('**/lms');pass('Staff lands on LMS');
   role='guest';loginRole='student';await page.goto('http://nightjar.test/learn#view=login');await page.getByLabel('Email address').fill('test@example.invalid');await page.getByLabel('Password',{exact:true}).fill('A-strong-test-password!');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL('**/learn#view=dashboard');await page.waitForLoadState('networkidle');pass('Student lands on Learn');
   await page.goto('http://nightjar.test/learn#course=newest');await page.getByRole('button',{name:'Request enrollment',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.waitFor();await page.setViewportSize({width:390,height:844});assert(await dialog.evaluate(e=>{const r=e.getBoundingClientRect();return r.width<=innerWidth&&r.height<=innerHeight}));pass('Receipt dialog fits phone');
   await page.getByLabel('Receipt (optional)').setInputFiles({name:'receipt.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')});await dialog.getByText('Choose one JPG, PNG, or PDF receipt no larger than 10 MB.').waitFor();assert.equal(await page.getByLabel('Receipt (optional)').inputValue(),'');pass('Invalid attachment rejected');
@@ -58,6 +67,8 @@ const entry=JSON.parse(fs.readFileSync(path.join(ui,'.vite/manifest.json')))['in
   if(process.env.NJ_SCREENSHOTS)await page.screenshot({path:path.join(process.env.NJ_SCREENSHOTS,'receipt-phone.png'),fullPage:true});
   failure=false;await page.getByRole('button',{name:'Send for verification'}).click();await dialog.waitFor({state:'hidden'});const last=payments.at(-1);assert(last.headers['content-type'].startsWith('multipart/form-data; boundary='));assert.equal(last.headers['x-frappe-csrf-token'],'test-token');assert(last.body.includes('name="reference"')&&last.body.includes('name="receipt"; filename="receipt.pdf"'));pass('Text and receipt sent together with CSRF token');
   await page.getByRole('button',{name:'Request enrollment',exact:true}).click();await page.getByLabel('Payment details (required)').fill('Text-only transfer');await page.getByRole('button',{name:'Send for verification'}).click();await dialog.waitFor({state:'hidden'});assert(!payments.at(-1).body.includes('name="receipt"'));pass('Text-only request works');
+  await page.goto('http://nightjar.test/learn');await Promise.all([page.waitForNavigation(),page.getByRole('button',{name:'العربية',exact:true}).click()]);await page.waitForLoadState('networkidle');assert.equal(await page.locator('html').getAttribute('dir'),'rtl');assert.equal(await page.getByText('استكشف الدورات',{exact:true}).textContent(),'استكشف الدورات');pass('Arabic switch persists and enables RTL');
+  if(process.env.NJ_SCREENSHOTS)await page.screenshot({path:path.join(process.env.NJ_SCREENSHOTS,'catalog-ar-phone.png'),fullPage:true});
   assert.deepEqual(errors,[]);pass('No uncaught browser errors');console.log(`${count} checks passed (mock APIs, no real database).`);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

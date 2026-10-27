@@ -1,5 +1,7 @@
 # Nightjar Learning
 
+> **Unreleased bilingual preview:** this working tree contains `2026.10.26-preview.1` with Arabic/English content, full RTL support, and the solid 3D pyramid. It has not been pushed or deployed. See [the preview notes](docs/BILINGUAL-PREVIEW.md).
+
 **Release 2026.10.18.1 — existing installations:** use [the update instructions](docs/UPDATE-2026-10-18.md). Run the updater from the new download; it backs up and updates your existing project.
 
 An original dark learning experience on **Frappe Learning**, with enrollment-backed AES-HLS video access. AGPL-3.0-or-later. The official LMS remains the source of truth for courses, teaching, accounts, enrollment, assessment requirements, and completion.

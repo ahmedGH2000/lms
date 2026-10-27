@@ -1,11 +1,12 @@
 {
   "index.html": {
-    "file": "app-DNlslH6m.js",
+    "file": "app-DuBdLjQW.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "dynamicImports": [
-      "src/Player.vue"
+      "src/Player.vue",
+      "src/Translations.vue"
     ],
     "css": [
       "index.css"
@@ -64,7 +65,7 @@
     "src": "node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff2"
   },
   "src/Player.vue": {
-    "file": "assets/Player-Csm26izO.js",
+    "file": "assets/Player-B3V1Bh90.js",
     "name": "Player",
     "src": "src/Player.vue",
     "isDynamicEntry": true,
@@ -73,6 +74,15 @@
     ],
     "css": [
       "Player.css"
+    ]
+  },
+  "src/Translations.vue": {
+    "file": "assets/Translations-CssoYQOf.js",
+    "name": "Translations",
+    "src": "src/Translations.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
     ]
   }
 }

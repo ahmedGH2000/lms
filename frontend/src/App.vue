@@ -12,11 +12,14 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { rpc, boot, money, duration } from "./api";
 import CourseCard from "./CourseCard.vue";
+import CatalogHero from "./CatalogHero.vue";
 import Notice from "./Notice.vue";
 import AccountPanel from "./AccountPanel.vue";
 import Reviews from "./Reviews.vue";
 import Members from "./Members.vue";
+import { language, setLanguage, t } from "./i18n";
 const Player = defineAsyncComponent(() => import("./Player.vue"));
+const Translations = defineAsyncComponent(() => import("./Translations.vue"));
 const route = ref({}),
   courses = ref([]),
   categories = ref([]),
@@ -39,8 +42,7 @@ const commentText = ref(""),
   replyTo = ref(null),
   paymentOpen = ref(false),
   paymentRef = ref(""),
-  paymentFile = ref(null),
-  featuredImageFailed = ref(false);
+  paymentFile = ref(null);
 const signedIn = boot.user !== "Guest",
   compatible = boot.api_contract === 2,
   admin =
@@ -52,10 +54,7 @@ const view = computed(
     () => route.value.view || (route.value.course ? "course" : "catalog"),
   ),
   firstName = computed(() => boot.full_name?.split(" ")[0] || "Learner");
-const featured = computed(
-    () => courses.value[0],
-  ),
-  allLessons = computed(
+const allLessons = computed(
     () => course.value?.chapters.flatMap((c) => c.lessons) || [],
   );
 const safe = (v) =>
@@ -96,15 +95,16 @@ function activityMessage(e) {
     );
 }
 function removeComment(c) {
-  if (!window.confirm("Remove this comment? Replies will remain visible."))
+  if (!window.confirm(t("Remove this comment? Replies will remain visible.")))
     return;
   act(async () => {
     await rpc("community.remove", { kind: "comment", name: c.name }, true);
     comments.value = await rpc("api.discussion", { lesson: lesson.value.name });
-    notice.value = "Comment removed.";
+    notice.value = t("Comment removed.");
   });
 }
 function refreshPage() { location.reload(); }
+function chooseLanguage(value) { act(() => setLanguage(value)); }
 function documentFocus() {
   document.getElementById("main")?.focus();
 }
@@ -141,6 +141,7 @@ async function load() {
   ++seq; // Ignore catalog replies from the previous screen/filter state.
   const n = ++routeSeq;
   route.value = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+  document.documentElement.dataset.nightjarView = view.value;
   mobile.value = false;
   error.value = "";
   notice.value = "";
@@ -161,7 +162,7 @@ async function load() {
         });
         if (n !== routeSeq) return;
         if (l.course !== c.name)
-          throw new Error("This lesson belongs to another course.");
+          throw new Error(t("This lesson belongs to another course."));
         lesson.value = l;
         comments.value = await rpc("api.discussion", { lesson: l.name });
       }
@@ -219,7 +220,7 @@ function chooseReceipt(event) {
   paymentFile.value = null;
   if (!file) return;
   if (!/\.(jpe?g|png|pdf)$/i.test(file.name) || !file.size || file.size > 10 * 1024 * 1024) {
-    error.value = "Choose one JPG, PNG, or PDF receipt no larger than 10 MB.";
+    error.value = t("Choose one JPG, PNG, or PDF receipt no larger than 10 MB.");
     event.target.value = "";
     return;
   }
@@ -237,12 +238,12 @@ function sendPayment() {
     paymentFile.value = null;
     if (result.existing) {
       paymentOpen.value = false;
-      notice.value = "You already have a request for this course. Check its status in My learning; no new receipt was saved.";
+      notice.value = t("You already have a request for this course. Check its status in My learning; no new receipt was saved.");
       return;
     }
     paymentOpen.value = false;
     notice.value =
-      "Request received. Your instructor or administrator will verify payment before granting access.";
+      t("Request received. Your instructor or administrator will verify payment before granting access.");
   });
 }
 function sendComment() {
@@ -259,7 +260,7 @@ function sendComment() {
     commentText.value = "";
     replyTo.value = null;
     comments.value = await rpc("api.discussion", { lesson: lesson.value.name });
-    notice.value = "Your comment was posted.";
+    notice.value = t("Your comment was posted.");
   });
 }
 function complete() {
@@ -271,8 +272,8 @@ function complete() {
       progress: d.progress,
     };
     notice.value = d.complete
-      ? "Lesson completed. Your progress is saved."
-      : "Complete the required lesson activities first, then refresh your progress.";
+      ? t("Lesson completed. Your progress is saved.")
+      : t("Complete the required lesson activities first, then refresh your progress.");
   });
 }
 
@@ -291,7 +292,6 @@ function trap(e) {
     a[0]?.focus();
   }
 }
-watch(featured, () => { featuredImageFailed.value = false; });
 watch(paymentOpen, async (open) => {
   document.body.style.overflow = open ? "hidden" : "";
   if (open) {
@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <a class="skip-link" href="#main" @click.prevent="documentFocus"
-    >Skip to content</a
+    >{{ t("Skip to content") }}</a
   >
   <header class="site-header" :inert="paymentOpen">
     <div class="header-inner">
@@ -345,7 +345,7 @@ onBeforeUnmount(() => {
         class="mobile-toggle quiet"
         @click="mobile = !mobile"
         :aria-expanded="mobile"
-        aria-label="Toggle navigation"
+        :aria-label="t('Toggle navigation')"
         aria-controls="main-navigation"
       >
         ☰
@@ -353,21 +353,28 @@ onBeforeUnmount(() => {
       <nav
         id="main-navigation"
         :class="{ open: mobile }"
-        aria-label="Main navigation"
+        :aria-label="t('Main navigation')"
       >
-        <a href="#" :class="{ active: view === 'catalog' }">Explore courses</a
+        <a href="#" :class="{ active: view === 'catalog' }">{{ t("Explore courses") }}</a
         ><a href="#view=dashboard" :class="{ active: view === 'dashboard' }"
-          >My learning</a
-        ><a v-if="staff" href="/lms">Teaching studio ↗</a
-        ><a v-if="staff" href="/lms/payment-requests">Payments</a
-        ><a v-if="admin" href="#view=members">Students</a>
+          >{{ t("My learning") }}</a
+        ><a v-if="staff" href="/lms">{{ t("Teaching studio") }} ↗</a
+        ><a v-if="staff" href="/lms/payment-requests">{{ t("Payments") }}</a
+        ><a v-if="staff" href="#view=translations">{{ t("Translations") }}</a
+        ><a v-if="admin" href="#view=members">{{ t("Students") }}</a
+        ><a v-if="!signedIn" class="mobile-account-link" href="#view=login">{{ t("Sign in") }}</a
+        ><a v-else class="mobile-account-link" href="#view=profile">{{ t("Profile") }}</a>
       </nav>
-      <a v-if="!signedIn" class="button small" href="#view=login">Sign in</a
+      <div class="language-switch" role="group" :aria-label="t('Choose language')">
+        <button type="button" :aria-pressed="language === 'ar'" :class="{ active: language === 'ar' }" @click="chooseLanguage('ar')">العربية</button>
+        <button type="button" :aria-pressed="language === 'en'" :class="{ active: language === 'en' }" @click="chooseLanguage('en')">English</button>
+      </div>
+      <a v-if="!signedIn" class="button small" href="#view=login">{{ t("Sign in") }}</a
       ><a
         v-else
         class="account"
         href="#view=profile"
-        :aria-label="'Manage account for ' + boot.full_name"
+        :aria-label="t('Manage account for {name}', { name: boot.full_name })"
         ><span>{{ firstName[0] }}</span
         ><b>{{ firstName }}</b></a
       >
@@ -377,12 +384,12 @@ onBeforeUnmount(() => {
     <Notice id="action-error" tabindex="-1" :message="paymentOpen ? '' : error" kind="error" @dismiss="error = ''" />
     <Notice :message="notice" @dismiss="notice = ''" />
     <div v-if="!compatible" class="empty" role="alert">
-      <h2>A platform update needs to finish.</h2>
-      <p>Please contact the administrator, or refresh after the update is complete.</p>
-      <button class="button" @click="refreshPage">Refresh page</button>
+      <h2>{{ t("A platform update needs to finish.") }}</h2>
+      <p>{{ t("Please contact the administrator, or refresh after the update is complete.") }}</p>
+      <button class="button" @click="refreshPage">{{ t("Refresh page") }}</button>
     </div>
     <div v-else-if="loading" class="loading" role="status">
-      <i></i>Opening your learning space…
+      <i></i>{{ t("Opening your learning space…") }}
     </div>
     <AccountPanel
       v-else-if="
@@ -392,89 +399,48 @@ onBeforeUnmount(() => {
       :mode="view"
     />
     <Members v-else-if="view === 'members' && admin" />
+    <Translations v-else-if="view === 'translations' && staff" />
     <template v-else-if="view === 'catalog'"
-      ><section class="catalog-intro">
-        <div>
-          <div class="intro-note"><i></i>Small lessons. Lasting skills.</div>
-          <h1>Less watching.<br />More understanding.</h1>
-          <p>
-            Practical courses. Thoughtful explanations. Real progress.<br
-              class="desktop-only"
-            />
-            Find your next course and keep moving forward.
-          </p>
-        </div>
-        <div class="intro-side">
-          <svg viewBox="0 0 120 100" aria-hidden="true">
-            <path
-              d="M18 70 59 15 101 70 59 92ZM18 70 59 47 101 70M59 15v77"
-            /></svg
-          ><span>Learn at your pace.<br />Build with confidence.</span>
-        </div>
-      </section>
-      <section
-        v-if="featured && !catalogError && !catalogLoading && !search && !category && !level && !page"
-        class="featured"
-      >
-        <a class="featured-art" :href="`#course=${encodeURIComponent(featured.name)}`" :aria-label="'Explore ' + featured.title">
-          <img v-if="featured.image && !featuredImageFailed" :src="featured.image" :alt="featured.title" class="featured-course-image" @error="featuredImageFailed = true" />
-          <div v-else class="featured-fallback"><span aria-hidden="true">↗</span><strong>{{ featured.title }}</strong><small>Your next learning adventure</small></div>
-        </a>
-        <div class="featured-copy">
-          <span class="featured-label">In focus</span>
-          <h2>{{ featured.title }}</h2>
-          <p>{{ featured.short_introduction }}</p>
-          <div class="feature-facts">
-            <span>{{ featured.nj_difficulty || "Beginner" }}</span
-            ><span>{{ featured.lessons }} lessons</span
-            ><span>{{ money(featured) }}</span>
-          </div>
-          <a
-            class="button"
-            :href="`#course=${encodeURIComponent(featured.name)}`"
-            >Explore this course ↗</a
-          >
-        </div>
-      </section>
-      <section class="catalog-section">
+      ><CatalogHero :signed-in="signedIn" />
+      <section id="course-browser" class="catalog-section course-browser" tabindex="-1" :aria-label="t('Explore courses')">
         <div class="section-heading">
           <div>
-            <h2>Find your next skill</h2>
-            <p>A little curiosity can take you a long way.</p>
+            <h2>{{ t("Find your next skill") }}</h2>
+            <p>{{ t("Choose something worth your curiosity.") }}</p>
           </div>
-          <span v-if="catalogReady && !catalogError && !catalogLoading" class="count">{{ total }} courses</span>
+          <span v-if="catalogReady && !catalogError && !catalogLoading" class="count">{{ total }} {{ t("courses") }}</span>
         </div>
         <div class="filters">
           <label class="search-field"
-            ><span aria-hidden="true">⌕</span
+            ><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg
             ><input
               v-model="search"
               type="search"
-              placeholder="What do you want to learn?"
-              aria-label="Search courses" /></label
+              :placeholder="t('What do you want to learn?')"
+              :aria-label="t('Search courses')" /></label
           ><label
-            ><span class="sr-only">Category</span
+            ><span class="sr-only">{{ t("Category") }}</span
             ><select v-model="category">
-              <option value="">All topics</option>
+              <option value="">{{ t("All topics") }}</option>
               <option v-for="c in categories" :key="c">{{ c }}</option>
             </select></label
           ><label
-            ><span class="sr-only">Difficulty</span
+            ><span class="sr-only">{{ t("Difficulty") }}</span
             ><select v-model="level">
-              <option value="">All levels</option>
-              <option>Beginner</option>
-              <option>Intermediate</option>
-              <option>Advanced</option>
+              <option value="">{{ t("All levels") }}</option>
+              <option value="Beginner">{{ t("Beginner") }}</option>
+              <option value="Intermediate">{{ t("Intermediate") }}</option>
+              <option value="Advanced">{{ t("Advanced") }}</option>
             </select></label
           >
         </div>
         <div v-if="catalogError" class="empty" role="alert">
-          <h3>We couldn't load the courses.</h3>
+          <h3>{{ t("We couldn't load the courses.") }}</h3>
           <p>{{ catalogError }}</p>
-          <button class="button" :disabled="catalogLoading" @click="catalog">Retry loading courses</button>
+          <button class="button" :disabled="catalogLoading" @click="catalog">{{ t("Retry loading courses") }}</button>
         </div>
-        <div v-else-if="catalogLoading" class="loading" role="status">Loading courses…</div>
-        <div v-else class="course-grid">
+        <div v-else-if="catalogLoading" class="loading" role="status">{{ t("Loading courses…") }}</div>
+        <div v-else-if="courses.length" class="course-grid">
           <CourseCard
             v-for="(c, i) in courses"
             :key="c.name"
@@ -486,15 +452,15 @@ onBeforeUnmount(() => {
           <h3>
             {{
               search || category || level
-                ? "No matching courses."
-                : "Your learning library starts here."
+                ? t("No matching courses.")
+                : t("Your learning library starts here.")
             }}
           </h3>
           <p>
             {{
               search || category || level
-                ? "Try another topic or clear your filters."
-                : "Publish your first course in the teaching studio."
+                ? t("Try another topic or clear your filters.")
+                : t("Publish your first course in the teaching studio.")
             }}
           </p>
           <button
@@ -506,53 +472,53 @@ onBeforeUnmount(() => {
               level = '';
             "
           >
-            Clear filters</button
+            {{ t("Clear filters") }}</button
           ><a v-else-if="staff" class="button" href="/lms"
-            >Open teaching studio</a
+            >{{ t("Open teaching studio") }}</a
           >
         </div>
         <div v-if="!catalogError && !catalogLoading && total > 24" class="pagination">
           <button class="quiet" :disabled="!page" @click="page--">
-            Previous</button
-          ><span>Page {{ page + 1 }}</span
+            {{ t("Previous") }}</button
+          ><span>{{ t("Page") }} {{ page + 1 }}</span
           ><button
             class="quiet"
             :disabled="(page + 1) * 24 >= total"
             @click="page++"
           >
-            Next
+            {{ t("Next") }}
           </button>
         </div>
       </section>
       <aside v-if="!signedIn" class="join-strip">
         <div>
-          <h2>Your next chapter starts with one lesson.</h2>
-          <p>Create an account to save progress and join the conversation.</p>
+          <h2>{{ t("Your next chapter starts with one lesson.") }}</h2>
+          <p>{{ t("Create an account to save progress and join the conversation.") }}</p>
         </div>
-        <a class="button" href="#view=signup">Create an account</a>
+        <a class="button" href="#view=signup">{{ t("Create an account") }}</a>
       </aside></template
     >
     <template v-else-if="view === 'dashboard'"
       ><section class="page-intro">
-        <span class="intro-note">Your learning space</span>
+        <span class="intro-note">{{ t("Your learning space") }}</span>
         <h1>
           {{
             signedIn
-              ? `Keep going, ${firstName}.`
-              : "A place for your progress."
+              ? t("Keep going, {name}.", { name: firstName })
+              : t("A place for your progress.")
           }}
         </h1>
-        <p>Pick up where you left off. Every lesson brings you closer.</p>
+        <p>{{ t("Pick up where you left off. Every lesson brings you closer.") }}</p>
       </section>
       <template v-if="signedIn"
         ><div class="stats">
           <div>
             <strong>{{ mine.length }}</strong
-            ><span>Enrolled courses</span>
+            ><span>{{ t("Enrolled courses") }}</span>
           </div>
           <div>
             <strong>{{ mine.filter((c) => c.progress >= 100).length }}</strong
-            ><span>Courses completed</span>
+            ><span>{{ t("Courses completed") }}</span>
           </div>
           <div>
             <strong
@@ -563,12 +529,12 @@ onBeforeUnmount(() => {
                     )
                   : 0
               }}%</strong
-            ><span>Average course progress</span>
+            ><span>{{ t("Average course progress") }}</span>
           </div>
         </div>
         <div class="section-heading">
-          <h2>Continue learning</h2>
-          <a class="text-button" href="#">Explore more courses ↗</a>
+          <h2>{{ t("Continue learning") }}</h2>
+          <a class="text-button" href="#">{{ t("Explore more courses") }} ↗</a>
         </div>
         <div class="course-grid">
           <CourseCard
@@ -580,46 +546,46 @@ onBeforeUnmount(() => {
           />
         </div>
         <div v-if="!mine.length" class="empty">
-          <h3>Find something you’re curious about.</h3>
-          <p>Your enrolled courses will appear here.</p>
-          <a class="button" href="#">Explore courses</a>
+          <h3>{{ t("Find something you’re curious about.") }}</h3>
+          <p>{{ t("Your enrolled courses will appear here.") }}</p>
+          <a class="button" href="#">{{ t("Explore courses") }}</a>
         </div>
         <section v-if="requests.length" class="request-section">
-          <h2>Payment requests</h2>
+          <h2>{{ t("Payment requests") }}</h2>
           <div v-for="r in requests" :key="r.name" class="request-row">
             <div>
-              <b>{{ r.course }}</b>
+              <b>{{ r.course_title || r.course }}</b>
               <p>
-                {{ r.review_note || "Waiting for instructor or administrator verification." }}
+                {{ r.review_note || t("Waiting for instructor or administrator verification.") }}
               </p>
-              <a v-if="r.receipt_name" :href="'/api/method/nightjar_learning.payments.receipt?request=' + encodeURIComponent(r.name)">Download your receipt</a>
+              <a v-if="r.receipt_name" :href="'/api/method/nightjar_learning.payments.receipt?request=' + encodeURIComponent(r.name)">{{ t("Download your receipt") }}</a>
             </div>
-            <span class="status-pill">{{ r.status }}</span>
+            <span class="status-pill">{{ t(r.status) }}</span>
           </div>
         </section></template
       >
       <div v-else class="empty">
-        <p>Sign in to see your saved progress.</p>
-        <a class="button" href="#view=login">Sign in</a>
+        <p>{{ t("Sign in to see your saved progress.") }}</p>
+        <a class="button" href="#view=login">{{ t("Sign in") }}</a>
       </div></template
     >
     <section v-else-if="view === 'payments'" class="page-intro">
-      <h1>Payment requests</h1>
-      <p v-if="staff">Open your teaching workspace to review enrollment requests.</p>
-      <a v-if="staff" href="/lms/payment-requests" class="button">Open payment requests</a>
-      <p v-else>Check your enrollment requests in <a href="#view=dashboard">My learning</a>.</p>
+      <h1>{{ t("Payment requests") }}</h1>
+      <p v-if="staff">{{ t("Open your teaching workspace to review enrollment requests.") }}</p>
+      <a v-if="staff" href="/lms/payment-requests" class="button">{{ t("Open payment requests") }}</a>
+      <p v-else>{{ t("Check your enrollment requests in") }} <a href="#view=dashboard">{{ t("My learning") }}</a>.</p>
     </section>
     <template v-else-if="course"
       ><a
         class="back-link"
         :href="lesson ? `#course=${encodeURIComponent(course.name)}` : '#'"
-        >← {{ lesson ? course.title : "All courses" }}</a
+        >{{ language === "ar" ? "→" : "←" }} {{ lesson ? course.title : t("All courses") }}</a
       ><template v-if="!route.lesson"
         ><section class="course-hero">
           <div>
             <div class="feature-facts">
               <span>{{ course.category }}</span
-              ><span>{{ course.nj_difficulty || "Beginner" }}</span>
+              ><span>{{ t(course.nj_difficulty || "Beginner") }}</span>
             </div>
             <h1>{{ course.title }}</h1>
             <p>{{ course.short_introduction }}</p>
@@ -627,12 +593,12 @@ onBeforeUnmount(() => {
               <span class="avatar">{{
                 course.instructors[0]?.name?.[0] || "N"
               }}</span
-              >With {{ course.instructors.map((i) => i.name).join(", ") }}
+              >{{ t("With") }} {{ course.instructors.map((i) => i.name).join(", ") }}
             </div>
           </div>
           <aside class="enrollment-card">
             <span class="big-play">▷</span><strong>{{ money(course) }}</strong>
-            <p>{{ allLessons.length }} lessons. Your own pace.</p>
+            <p>{{ allLessons.length }} {{ t("lessons") }}. {{ t("Your own pace.") }}</p>
             <button
               v-if="course.can_learn"
               class="button"
@@ -641,35 +607,34 @@ onBeforeUnmount(() => {
             >
               {{
                 course.enrollment?.progress
-                  ? "Continue learning"
-                  : "Start learning"
+                  ? t("Continue learning")
+                  : t("Start learning")
               }}</button
             ><button v-else class="button" :disabled="busy" @click="enroll">
               {{
-                course.paid_course ? "Request enrollment" : "Enroll for free"
+                course.paid_course ? t("Request enrollment") : t("Enroll for free")
               }}
             </button>
             <div v-if="course.enrollment" class="card-progress">
-              <p>{{ Math.round(course.enrollment.progress || 0) }}% complete</p>
+              <p>{{ Math.round(course.enrollment.progress || 0) }}% {{ t("complete") }}</p>
               <progress
                 :value="course.enrollment.progress || 0"
                 max="100"
-                aria-label="Course progress"
+                :aria-label="t('Course progress')"
               ></progress>
             </div>
             <small v-if="course.paid_course && !course.can_learn"
-              >Contact your administrator for payment instructions. Access opens
-              after verification.</small
+              >{{ t("Contact your administrator for payment instructions. Access opens after verification.") }}</small
             >
           </aside>
         </section>
         <div class="course-body">
           <section>
-            <h2>About this course</h2>
+            <h2>{{ t("About this course") }}</h2>
             <div class="prose" v-html="safe(course.description)"></div>
           </section>
           <section>
-            <h2>Your learning path</h2>
+            <h2>{{ t("Your learning path") }}</h2>
             <div
               v-for="(ch, i) in course.chapters"
               :key="ch.name"
@@ -705,7 +670,7 @@ onBeforeUnmount(() => {
             <span class="intro-note">{{ course.title }}</span>
             <h1>{{ lesson.title }}</h1>
           </div>
-          <span v-if="lesson.complete" class="complete-pill">✓ Completed</span>
+          <span v-if="lesson.complete" class="complete-pill">✓ {{ t("Completed") }}</span>
         </div>
         <div class="learning-layout">
           <section class="lesson-main">
@@ -717,21 +682,20 @@ onBeforeUnmount(() => {
             <div v-else class="reading-banner">
               <span>✧</span>
               <div>
-                <h2>Take a moment to explore.</h2>
-                <p>This lesson is ready to read below.</p>
+                <h2>{{ t("Take a moment to explore.") }}</h2>
+                <p>{{ t("This lesson is ready to read below.") }}</p>
               </div>
             </div>
             <div class="lesson-actions">
               <span
-                >{{ Math.round(course.enrollment?.progress || 0) }}% of course
-                complete</span
+                >{{ Math.round(course.enrollment?.progress || 0) }}% {{ t("of course complete") }}</span
               ><button
                 class="button small"
                 :disabled="busy || lesson.complete"
                 @click="complete"
               >
                 {{
-                  lesson.complete ? "✓ Lesson completed" : "Mark as complete"
+                  lesson.complete ? `✓ ${t("Lesson completed")}` : t("Mark as complete")
                 }}
               </button>
             </div>
@@ -741,7 +705,7 @@ onBeforeUnmount(() => {
               class="activity-frame"
               :src="'/lms?nightjar_lesson=' + encodeURIComponent(lesson.name)"
               :style="{ height: activityHeight + 'px' }"
-              title="Lesson resources and activities"
+              :title="t('Lesson resources and activities')"
               allow="fullscreen; camera; microphone"
             />
             <article v-else class="prose lesson-content">
@@ -760,49 +724,48 @@ onBeforeUnmount(() => {
                 ><code>{{b.data.code}}</code></pre>
                 <div v-else class="native-block">
                   <p>
-                    This lesson includes an interactive activity or embedded
-                    resource.
+                    {{ t("This lesson includes an interactive activity or embedded resource.") }}
                   </p>
                 </div></template
               >
             </article>
             <section class="discussion">
               <h2>
-                Lesson discussion <span>{{ comments.length }}</span>
+                {{ t("Lesson discussion") }} <span>{{ comments.length }}</span>
               </h2>
               <p class="muted">
-                Ask a question, share a discovery, or help someone move forward.
+                {{ t("Ask a question, share a discovery, or help someone move forward.") }}
               </p>
               <form @submit.prevent="sendComment">
                 <div v-if="replyTo" class="replying">
-                  Replying to {{ replyTo.author }}
+                  {{ t("Replying to {name}", { name: replyTo.author }) }}
                   <button
                     type="button"
                     class="text-button"
                     @click="replyTo = null"
                   >
-                    Cancel
+                    {{ t("Cancel") }}
                   </button>
                 </div>
-                <label class="sr-only" for="comment">Your comment</label
+                <label class="sr-only" for="comment">{{ t("Your comment") }}</label
                 ><textarea
                   id="comment"
                   v-model="commentText"
                   maxlength="4000"
                   required
-                  placeholder="What’s on your mind?"
+                  :placeholder="t('What’s on your mind?')"
                 ></textarea
                 ><button
                   class="button small"
                   :disabled="busy || !commentText.trim()"
                 >
                   {{
-                    busy ? "Posting…" : replyTo ? "Post reply" : "Post comment"
+                    busy ? t("Posting…") : replyTo ? t("Post reply") : t("Post comment")
                   }}
                 </button>
               </form>
               <div v-if="!comments.length" class="discussion-empty">
-                Be the first to start the conversation.
+                {{ t("Be the first to start the conversation.") }}
               </div>
               <article
                 v-for="c in comments"
@@ -815,7 +778,7 @@ onBeforeUnmount(() => {
                   <div class="comment-author">
                     <b>{{ c.author }}</b
                     ><span v-if="c.instructor" class="instructor-tag"
-                      >Instructor</span
+                      >{{ t("Instructor") }}</span
                     ><time>{{
                       new Date(
                         c.creation.replace(" ", "T"),
@@ -823,32 +786,32 @@ onBeforeUnmount(() => {
                     }}</time>
                   </div>
                   <small v-if="c.nj_reply_to" class="muted"
-                    >In reply to
+                    >{{ t("In reply to") }}
                     {{
                       comments.find((x) => x.name === c.nj_reply_to)?.author ||
-                      "a comment"
+                      t("a comment")
                     }}</small
                   >
                   <div class="prose" v-html="safe(c.reply)"></div>
-                  <button class="text-button" @click="replyTo = c">Reply</button
+                  <button class="text-button" @click="replyTo = c">{{ t("Reply") }}</button
                   ><button
                     v-if="admin"
                     class="text-button danger"
                     :disabled="busy"
                     @click="removeComment(c)"
                   >
-                    Delete comment
+                    {{ t("Remove") }}
                   </button>
                 </div>
               </article>
             </section>
           </section>
           <aside class="lesson-sidebar">
-            <h2>Course contents</h2>
+            <h2>{{ t("Your learning path") }}</h2>
             <progress
               :value="course.enrollment?.progress || 0"
               max="100"
-              aria-label="Course progress"
+              :aria-label="t('Course progress')"
             ></progress>
             <div v-for="(ch, i) in course.chapters" :key="ch.name">
               <h3>{{ i + 1 }}. {{ ch.title }}</h3>
@@ -869,8 +832,8 @@ onBeforeUnmount(() => {
   </main>
   <footer class="site-footer" :inert="paymentOpen">
     <a class="brand" href="#">nightjar<span>learning</span></a>
-    <p>Stay curious. Keep building.</p>
-    <span>Built for curious minds.</span>
+    <p>{{ t("Stay curious. Keep building.") }}</p>
+    <span>{{ t("Built for curious minds.") }}</span>
   </footer>
   <div
     v-if="paymentOpen"
@@ -887,20 +850,19 @@ onBeforeUnmount(() => {
     >
       <button
         class="modal-close quiet"
-        aria-label="Close payment request"
+        :aria-label="t('Close payment request')"
         @click="closePayment" :disabled="busy"
       >
         ×</button
-      ><span class="featured-label">Your next step</span>
-      <h2 id="payment-title">Request enrollment</h2>
+      ><span class="featured-label">{{ t("Your next step") }}</span>
+      <h2 id="payment-title">{{ t("Request enrollment") }}</h2>
       <p>{{ course.title }} · {{ money(course) }}</p>
       <p>
-        Follow your administrator’s payment instructions, then enter the
-        payment details below. You can also attach a receipt. Access opens after approval.
+        {{ t("Follow your administrator’s payment instructions, then enter the payment details below. You can also attach a receipt. Access opens after approval.") }}
       </p>
       <Notice :message="error" kind="error" @dismiss="error = ''" />
       <form @submit.prevent="sendPayment">
-        <label for="payment-reference">Payment details (required)</label
+        <label for="payment-reference">{{ t("Payment details (required)") }}</label
         ><input
           id="payment-reference"
           v-model="paymentRef"
@@ -908,15 +870,15 @@ onBeforeUnmount(() => {
           minlength="3"
           maxlength="140"
           required
-          placeholder="For example: transfer reference, date, and payer name"
+          :placeholder="t('For example: transfer reference, date, and payer name')"
         />
-        <label for="payment-receipt">Receipt (optional)</label>
+        <label for="payment-receipt">{{ t("Receipt (optional)") }}</label>
         <input id="payment-receipt" type="file" accept=".jpg,.jpeg,.png,.pdf" :disabled="busy" @change="chooseReceipt" aria-describedby="receipt-help" />
-        <p id="receipt-help" class="muted">One JPG, PNG, or PDF · up to 10 MB. Only you and authorized teaching staff can download it.</p>
+        <p id="receipt-help" class="muted">{{ t("One JPG, PNG, or PDF · up to 10 MB. Only you and authorized teaching staff can download it.") }}</p>
         <button class="button" :disabled="busy">
-          {{ busy ? "Sending…" : "Send for verification" }}</button
+          {{ busy ? t("Sending…") : t("Send for verification") }}</button
         ><button type="button" class="quiet" @click="closePayment" :disabled="busy">
-          Cancel
+          {{ t("Cancel") }}
         </button>
       </form>
     </section>

@@ -9,6 +9,8 @@ def landing_page():
 
 
 def before_request():
+    from nightjar_learning.localization import apply_request_language
+    apply_request_language()
     # Receipts have no public File record and can only be read via payments.receipt.
     from urllib.parse import unquote
     path = unquote(frappe.request.path)

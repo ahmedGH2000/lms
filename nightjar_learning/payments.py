@@ -159,13 +159,19 @@ def requests():
         "review_note",
     ]
     fields += ["member", "reference", "receipt_name", "receipt_size"]
-    return frappe.get_all(
+    rows = frappe.get_all(
         "NJ Payment Request",
         filters={"member": member},
         fields=fields,
         order_by="creation desc",
         limit_page_length=100,
     )
+    for row in rows:
+        from nightjar_learning.localization import translated
+
+        course = frappe.get_doc("LMS Course", row.course)
+        row.course_title = translated(course, "title") or row.course
+    return rows
 
 
 @frappe.whitelist()
@@ -189,7 +195,9 @@ def review_requests(start=0, status=None):
                 "review_note", "reviewed_by", "receipt_name", "receipt_size"],
         order_by="creation desc, name desc", start=start, limit_page_length=51)
     for row in rows[:50]:
-        row.course_title = frappe.db.get_value("LMS Course", row.course, "title") or row.course
+        from nightjar_learning.localization import translated
+        course = frappe.get_doc("LMS Course", row.course)
+        row.course_title = translated(course, "title") or row.course
     return {"items": rows[:50], "has_more": len(rows) > 50}
 
 

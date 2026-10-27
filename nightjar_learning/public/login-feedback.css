@@ -14,6 +14,34 @@
   color: #7b231d;
   border-color: #cf817a;
 }
+.nightjar-language-switch {
+  position: fixed;
+  inset-block-end: 18px;
+  inset-inline-end: 18px;
+  z-index: 10000;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+}
+.nightjar-language-switch button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  font: 600 12px/1.2 system-ui, sans-serif;
+}
+.nightjar-language-switch button[data-active="true"] {
+  background: #2563eb;
+  color: white;
+}
+.nightjar-language-switch[data-busy="true"] { opacity: 0.65; pointer-events: none; }
 @media (max-width: 480px) {
   .for-login .page-card,
   .for-signup .page-card {

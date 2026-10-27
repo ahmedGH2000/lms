@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import DOMPurify from "dompurify";
-import { rpc, boot } from "./api";
+import { rpc } from "./api";
+import { t } from "./i18n";
 const props = defineProps({ course: String });
 const data = ref({ items: [] }),
   text = ref(""),
@@ -49,7 +50,7 @@ function reply(r) {
   });
 }
 function remove(kind, r) {
-  if (!window.confirm("Remove this post?")) return;
+  if (!window.confirm(t("Remove this post?"))) return;
   run(async () => {
     await rpc("community.remove", { kind, name: r.name }, true);
     await load();
@@ -60,10 +61,10 @@ function remove(kind, r) {
   <section class="reviews discussion">
     <div class="section-heading">
       <div>
-        <h2>What students think</h2>
-        <p>Course reviews and conversations with your instructor.</p>
+        <h2>{{ t("What students think") }}</h2>
+        <p>{{ t("Course reviews and conversations with your instructor.") }}</p>
       </div>
-      <span>{{ data.items.length }} reviews</span>
+      <span>{{ data.items.length }} {{ t("reviews") }}</span>
     </div>
     <p v-if="error" role="alert" class="notice error">{{ error }}</p>
     <form
@@ -72,22 +73,22 @@ function remove(kind, r) {
       @submit.prevent="post"
     >
       <label
-        >Your rating<select v-model="rating">
+        >{{ t("Your rating") }}<select v-model="rating">
           <option v-for="n in 5" :value="String(n)">
-            {{ n }} {{ n === 1 ? "star" : "stars" }}
+            {{ n }} {{ t(n === 1 ? "star" : "stars") }}
           </option>
         </select></label
       ><label
-        >Your review<textarea
+        >{{ t("Your review") }}<textarea
           v-model="text"
           required
           maxlength="4000"
-          placeholder="What helped you learn?"
+          :placeholder="t('What helped you learn?')"
         /></label
-      ><button class="button" :disabled="busy">Post review</button>
+      ><button class="button" :disabled="busy">{{ t("Post review") }}</button>
     </form>
     <p v-if="!data.items.length">
-      No reviews yet. Be the first to share your experience after enrolling.
+      {{ t("No reviews yet. Be the first to share your experience after enrolling.") }}
     </p>
     <article v-for="r in data.items" :key="r.name" class="review-card">
       <header class="comment-author">
@@ -95,7 +96,7 @@ function remove(kind, r) {
         ><b>{{ r.author }}</b
         ><span
           class="stars"
-          :aria-label="Math.round(r.rating * 5) + ' out of 5 stars'"
+          :aria-label="t('{rating} out of 5 stars', { rating: Math.round(r.rating * 5) })"
           >{{ "★".repeat(Math.round(r.rating * 5))
           }}{{ "☆".repeat(5 - Math.round(r.rating * 5)) }}</span
         >
@@ -107,10 +108,10 @@ function remove(kind, r) {
         :disabled="busy"
         @click="remove('review', r)"
       >
-        Delete review
+        {{ t("Delete review") }}
       </button>
       <blockquote v-if="r.nj_response" class="review-response">
-        <b>{{ r.responder }} <span class="instructor-tag">Instructor</span></b>
+        <b>{{ r.responder }} <span class="instructor-tag">{{ t("Instructor") }}</span></b>
         <div class="prose" v-html="safe(r.nj_response)"></div>
         <button
           v-if="data.can_moderate"
@@ -118,19 +119,19 @@ function remove(kind, r) {
           :disabled="busy"
           @click="remove('review_reply', r)"
         >
-          Delete reply
+          {{ t("Delete reply") }}
         </button>
       </blockquote>
       <form v-if="data.can_reply" class="stack-form" @submit.prevent="reply(r)">
         <label
-          >{{ r.nj_response ? "Replace your reply" : "Reply as instructor"
+          >{{ r.nj_response ? t("Replace your reply") : t("Reply as instructor")
           }}<textarea
             v-model="responses[r.name]"
             required
             maxlength="4000"
           /></label
         ><button class="button small" :disabled="busy">
-          Post instructor reply
+          {{ t("Post instructor reply") }}
         </button>
       </form>
     </article>

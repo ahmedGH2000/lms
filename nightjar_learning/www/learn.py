@@ -7,9 +7,12 @@ no_cache = 1
 
 
 def get_context(context):
+    from nightjar_learning.localization import current_language
     context.no_cache = 1
     assets = json.loads((Path(__file__).resolve().parents[1] / 'public/ui/.vite/manifest.json').read_text())
     context.entry_js = '/assets/nightjar_learning/ui/' + assets['index.html']['file']
+    context.asset_version = assets['index.html']['file']
+    context.language = current_language()
     context.boot = {
         "api_contract": 2,
         "user": frappe.session.user,
@@ -17,4 +20,5 @@ def get_context(context):
         "full_name": frappe.db.get_value("User", frappe.session.user, "full_name")
         or "Guest",
         "roles": frappe.get_roles() if frappe.session.user != "Guest" else [],
+        "language": context.language,
     }
